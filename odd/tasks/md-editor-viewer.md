@@ -16,10 +16,8 @@ Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live prev
 ## Tasks
 
 - T1 — S1,S3,S5 — route: parent inline — Skeleton: own git repo, Tauri 2 + Vite + React + TS + Tailwind + shadcn/ui, Rust file commands (read, atomic write), open/save one .md — commit: c5a0315 (main).
-- T2 — S2,S4,S6 — route: worker — View mode: markdown-it GFM + Shiki + Mermaid + Inkline readable styles + light/dark theme — commit: pend.
-- T3 — S2,S4,S6 — route: worker — Edit mode: CodeMirror 6, live preview (split), Editor/Split/Preview switch, format toolbar — commit: pend.
-- T4 — S2,S4 — route: worker — File drawer: folder tree (choosable root), multi-doc tabs with per-tab state, persistent recents, ⌘K palette — commit: pend.
-- T5 — S4 — route: worker — Export: standalone HTML (embedded styles) + print/PDF via system dialog — commit: pend.
+- T2 — S2,S4,S6 — route: worker — View mode: markdown-it GFM + Shiki + Mermaid + Inkline readable styles + light/dark theme — commit: b5bf891. — commit: pend.
+- T4 — S2,S4 — route: worker — File drawer: folder tree (choosable root), multi-doc tabs with per-tab state, persistent recents, ⌘K palette — commit: 1a75e6f. — commit: pend.
 - T6 — S4,S6 — route: parent/worker — Polish: settings window, status bar, shortcut map, brand fine-tuning — commit: pend.
 
 ## Log
@@ -30,3 +28,4 @@ Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live prev
 - **L4** (2026-11-21): ODD artifacts created — this document, visible todo (T1–T6), Engram mirrors. No source writes yet; T1 awaits the user's explicit go.
 - **L5**: «Adelante hasta terminar. paraleliza lo que necesites/creas» — explicit go; parallelization left to the parent's judgment.
 - **L6** (2026-11-21): T1 DONE inline — commits 34b73aa (setup: ODD doc, brand reference, guidance skill, worker role) and c5a0315 (skeleton) on main; branch feat/inkline-v1 opened. Gates observed: pnpm build ✓ (tsc -b + vite build), pnpm test ✓ 1/1, cargo test --lib ✓ 3/3 (atomic write leaves no temporaries, rejects parentless paths; read_file errors on missing). Setup notes: shadcn CLI 4.23.0 broken in this env → components generated with shadcn@4.22.0 (base-nova style over @base-ui/react); vitest 2.1 caused a dual-vite type clash → upgraded to vitest 3.2 (one orphaned vite@5 remains in the pnpm store, cosmetic).
+- **L7** (2026-11-21): T2 ∥ T4 delegated in parallel to two gentle-ai-worker children (nan/deepseek-v4-flash), both `completed`. Parent gates on the integrated tree: pnpm test 56/56, pnpm build ✓, cargo test --lib 13/13. Parent shell integration: App.tsx composes rail + explorer + topbar (breadcrumbs, save-state) + TabsBar + reading pane + ⌘K palette, with ⌘O/⌘S/⌘N/⌘\\ shortcuts. Commits: b5bf891 (T2), 1a75e6f (T4), 41fd4e6 (shell), plus a `fix(shell)` for the brand test assertion (getByText cannot match text split across nodes). **Delivery strategy recorded**: one commit per ODD unit on feat/inkline-v1; the cumulative slice passed the ~400-line work-unit boundary, so the native review candidate is the whole v1 feature slice (PR decision stays with the human).

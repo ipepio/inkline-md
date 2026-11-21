@@ -25,8 +25,12 @@ describe("App (shell Inkline)", () => {
   it("muestra marca, explorador, acciones y estado vacío", () => {
     render(<App />);
 
-    // Marca del sidebar.
-    expect(screen.getByText("inkline.")).toBeInTheDocument();
+    // Marca del sidebar (el punto vive en un span propio, como en el mockup).
+    expect(
+      screen.getByText(
+        (_, element) => element?.tagName === "STRONG" && element.textContent === "inkline.",
+      ),
+    ).toBeInTheDocument();
     // Cabecera del explorador.
     expect(screen.getByText("EXPLORADOR")).toBeInTheDocument();
     // Acciones del topbar.
