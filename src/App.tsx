@@ -474,7 +474,7 @@ export default function App() {
           automática y crecía más que la ventana; con el recorte del grid eso
           dejaba el área de trabajo fuera de vista y sin scroll. */}
       <main className="col-start-3 flex min-h-0 min-w-0 flex-col overflow-hidden">
-        <header className="flex h-[57px] min-h-[57px] items-center gap-3 border-b border-border bg-ink-side px-5">
+        <header className="flex h-[57px] min-h-[57px] shrink-0 items-center gap-3 border-b border-border bg-ink-side px-5">
           <p className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-muted-foreground">
             {crumbs ? (
               <>

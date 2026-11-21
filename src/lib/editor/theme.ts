@@ -49,9 +49,10 @@ export function editorTheme(theme: Theme): Extension {
         color: palette.text,
         fontSize: "12px",
         height: "100%",
-        // Sin esto el editor crece con el documento dentro de un flex y el
-        // scroller de CodeMirror nunca recibe una altura acotada (sin scroll).
+        // `overflow: hidden` evita que el editor empuje el layout del shell y
+        // deje la barra de estado fuera de la ventana.
         minHeight: "0",
+        overflow: "hidden",
       },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
@@ -68,15 +69,19 @@ export function editorTheme(theme: Theme): Extension {
       },
       ".cm-line": { padding: "0" },
       ".cm-gutters": {
-        backgroundColor: "transparent",
+        // Fondo opaco y sin opacidad: con el fondo transparente el texto se
+        // veía a través del gutter al desplazar en horizontal (las líneas se
+        // solapaban con el contenido).
+        backgroundColor: "var(--background)",
         border: "none",
+        borderRight: "1px solid var(--border)",
         color: palette.gutter,
         fontFamily: MONO,
         fontSize: "12px",
         lineHeight: "25px",
         minWidth: "53px",
         padding: "24px 0 40px 0",
-        opacity: "0.7",
+        opacity: "1",
         userSelect: "none",
       },
       ".cm-lineNumbers .cm-gutterElement": { padding: "0 14px 0 0" },

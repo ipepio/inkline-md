@@ -30,7 +30,7 @@ export function TabsBar({ docs, activeId, onSelect, onClose }: TabsBarProps) {
   return (
     <nav
       aria-label="Documentos abiertos"
-      className="flex h-[45px] min-h-[45px] items-stretch border-b border-border bg-ink-side"
+      className="flex h-[45px] min-h-[45px] shrink-0 items-stretch border-b border-border bg-ink-side"
     >
       <div className="flex min-w-0 flex-1 overflow-x-auto">
         {docs.map((doc) => {

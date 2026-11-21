@@ -110,6 +110,26 @@ describe("EditorWorkspace", () => {
     }
   });
 
+  it("acota el workspace para que el chrome del shell no se desplace", () => {
+    const { container } = render(
+      <EditorWorkspace
+        doc={{ id: "d1", contents: "# hola", viewState: {} }}
+        theme="dark"
+        mode="editor"
+        onModeChange={() => {}}
+        onContents={() => {}}
+        onViewState={() => {}}
+        preview={<p>preview</p>}
+      />,
+    );
+
+    // Regresión QA: si el workspace no recorta, el documento empuja la barra
+    // de estado fuera de la ventana y sólo aparece al bajar del todo.
+    const root = container.querySelector("[data-mode]");
+    expect(root?.className).toContain("min-h-0");
+    expect(root?.className).toContain("overflow-hidden");
+  });
+
   // Vista dividida redimensionable: dos paneles y un divisor arrastrable que
   // avisa del nuevo reparto (el shell lo guarda por documento).
   it("monta paneles redimensionables en split y reporta el reparto", () => {

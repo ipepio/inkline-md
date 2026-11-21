@@ -29,7 +29,7 @@ export function StatusBar({ fileName, line, column, words, lines, status }: Stat
   return (
     <footer
       aria-label="Estado del documento"
-      className="flex h-[31px] min-h-[31px] items-center gap-5 border-t border-border bg-ink-side px-[17px] font-mono text-[10px] text-muted-foreground"
+      className="flex h-[31px] min-h-[31px] shrink-0 items-center gap-5 border-t border-border bg-ink-side px-[17px] font-mono text-[10px] text-muted-foreground"
     >
       <span data-slot="file" className="max-w-[220px] truncate" title={fileName ?? undefined}>
         {fileName ?? NO_DOCUMENT_LABEL}

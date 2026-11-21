@@ -168,7 +168,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
   ) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-mode={mode}>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-mode={mode}>
       <div className="flex h-[49px] min-h-[49px] items-center gap-[3px] border-b border-border px-[17px]">
         <FormatToolbar
           onFormat={(kind) => paneRef.current?.applyFormat(kind)}
