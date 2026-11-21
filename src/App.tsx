@@ -19,7 +19,8 @@ import {
   SunIcon,
 } from "lucide-react";
 import { cn } from "cn";
-import brandIcon from "@/assets/brand/inkline.png";
+import brandMarkLight from "@/assets/brand/inkline-white.png";
+import brandMarkDark from "@/assets/brand/inkline-black.png";
 import brandWordmark from "@/assets/brand/inklineMD-text-logo.png";
 import brandWordmarkLight from "@/assets/brand/inklineMD-text-logo-white.png";
 import { CommandPalette } from "@/components/files/CommandPalette";
@@ -316,12 +317,20 @@ export default function App() {
         aria-label="Barra de Inkline"
         className="flex flex-col items-center gap-2 border-r border-border bg-ink-rail px-2 py-4"
       >
+        {/* Marca del rail: logo transparente, blanco en oscuro y negro en claro. */}
         <img
-          src={brandIcon}
+          src={brandMarkLight}
           alt="Inkline"
-          width={38}
-          height={38}
-          className="mb-5 size-[38px] rounded-[11px] object-contain"
+          width={34}
+          height={34}
+          className="mb-5 hidden size-[34px] object-contain dark:block"
+        />
+        <img
+          src={brandMarkDark}
+          alt="Inkline"
+          width={34}
+          height={34}
+          className="mb-5 block size-[34px] object-contain dark:hidden"
         />
         <button
           type="button"
