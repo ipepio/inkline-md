@@ -150,6 +150,9 @@ describe("EditorWorkspace", () => {
     expect(container.querySelector('[data-slot="resizable-panel-group"]')).not.toBeNull();
     expect(container.querySelector('[data-slot="resizable-handle"]')).not.toBeNull();
     expect(container.querySelectorAll('[data-slot="resizable-panel"]').length).toBe(2);
+    for (const pane of container.querySelectorAll("[data-pane]")) {
+      expect(pane).toHaveClass("h-full");
+    }
     // Los dos paneles siguen presentes con su cabecera.
     expect(screen.getByLabelText("Editor de Markdown")).toBeInTheDocument();
     expect(screen.getByLabelText("Vista previa")).toBeInTheDocument();

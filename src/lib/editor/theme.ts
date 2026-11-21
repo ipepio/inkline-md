@@ -66,20 +66,6 @@ export function editorTheme(theme: Theme): Extension {
         // siempre (antes la gutter arrastraba un desplazamiento de una línea).
         paddingTop: "24px",
         paddingBottom: "40px",
-        // Scrollbars propias: en WKWebView las del sistema son overlay y se
-        // ocultan; con estilo explícito la barra horizontal del editor queda
-        // siempre visible.
-        scrollbarWidth: "thin",
-        scrollbarColor: "var(--border) transparent",
-      },
-      ".cm-scroller::-webkit-scrollbar": { width: "10px", height: "10px" },
-      ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
-      ".cm-scroller::-webkit-scrollbar-thumb": {
-        backgroundColor: "var(--border)",
-        borderRadius: "6px",
-      },
-      ".cm-scroller::-webkit-scrollbar-thumb:hover": {
-        backgroundColor: "var(--muted-foreground)",
       },
       ".cm-content": {
         fontFamily: MONO,

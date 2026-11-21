@@ -115,7 +115,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
       data-pane="editor"
       aria-label="Editor de Markdown"
       className={cn(
-        "flex min-h-0 min-w-0 flex-col overflow-hidden",
+        "flex h-full min-h-0 min-w-0 flex-col overflow-hidden",
         mode === "split" && "border-r border-border",
       )}
     >
@@ -147,7 +147,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
     <section
       data-pane="preview"
       aria-label="Vista previa"
-      className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-ink-preview"
+      className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-ink-preview"
     >
       <div className={PANE_HEAD}>
         <span>

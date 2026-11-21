@@ -435,3 +435,15 @@
     font-size: 14px;
   }
 }
+
+/* Match both axes across the editor and the native scrolling panes. */
+.cm-scroller::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.cm-scroller::-webkit-scrollbar-thumb,
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
