@@ -340,3 +340,71 @@
     color: var(--muted-foreground);
   }
 }
+
+/* ============================================================================
+ * Impresión del panel de lectura (ODD T5 / S4 · «Exportación»)
+ *
+ * Ruta principal de impresión: el menú «Exportar» genera el HTML autónomo y lo
+ * abre en el navegador del sistema, porque WKWebView en macOS no abre el
+ * diálogo de impresión de forma fiable. Este bloque cubre el caso manual
+ * (⌘P sobre la ventana de Inkline): el documento sale en papel legible y sin la
+ * cromatura de la app. Sólo aplica a `print`, nunca a pantalla.
+ * ========================================================================== */
+@media print {
+  /* Sólo el documento: fuera rail, explorador, pestañas, topbar y barra de estado. */
+  #root > div {
+    display: block !important;
+  }
+
+  [aria-label="Barra de Inkline"],
+  [aria-label="Explorador de archivos"],
+  [aria-label="Documentos abiertos"],
+  main > header,
+  main > footer {
+    display: none !important;
+  }
+
+  /* El panel de lectura fluye sin scroll interno ni fondo oscuro. */
+  main > section {
+    display: block !important;
+    background: #ffffff !important;
+  }
+
+  main > section > div:last-child {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .inkline-readable {
+    max-inline-size: none;
+    font-size: 11.5pt;
+  }
+
+  .inkline-readable :is(h1, h2, h3) {
+    break-after: avoid;
+  }
+
+  .inkline-readable :is(pre, blockquote, figure, table) {
+    break-inside: avoid;
+  }
+
+  .inkline-readable .inkline-table {
+    overflow: visible;
+  }
+
+  .inkline-readable :is(
+    .inkline-pre,
+    .inkline-diagram,
+    .inkline-diagram__source,
+    blockquote,
+    th,
+    :not(pre) > code
+  ) {
+    background: transparent !important;
+  }
+}
