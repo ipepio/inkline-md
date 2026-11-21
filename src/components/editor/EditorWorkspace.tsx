@@ -108,14 +108,14 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
 
         <div
           data-panes={PANES[mode]}
-          className={cn("grid min-h-0 flex-1", PANES[mode])}
+          className={cn("grid min-h-0 flex-1 grid-rows-1", PANES[mode])}
         >
           {showEditor ? (
             <section
               data-pane="editor"
               aria-label="Editor de Markdown"
               className={cn(
-                "flex min-w-0 flex-col",
+                "flex min-h-0 min-w-0 flex-col overflow-hidden",
                 mode === "split" && "border-r border-border",
               )}
             >
@@ -147,7 +147,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
             <section
               data-pane="preview"
               aria-label="Vista previa"
-              className="flex min-w-0 flex-col bg-ink-preview"
+              className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-ink-preview"
             >
               <div className={PANE_HEAD}>
                 <span>

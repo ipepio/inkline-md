@@ -83,4 +83,30 @@ describe("EditorWorkspace", () => {
       "true",
     );
   });
+
+  // Regresión QA: sin esta cadena de alturas los paneles crecían con el
+  // documento, el shell los recortaba y el scroll no funcionaba. La fila del
+  // grid debe estar acotada (grid-rows-1) y cada panel debe poder encogerse.
+  it("acota la altura de la fila y de cada panel para que el scroll funcione", () => {
+    const { container } = render(
+      <EditorWorkspace
+        doc={{ id: "d1", contents: "# hola\n\ntexto", viewState: {} }}
+        theme="dark"
+        mode="split"
+        onModeChange={() => {}}
+        onContents={() => {}}
+        onViewState={() => {}}
+        preview={<p>preview</p>}
+      />,
+    );
+
+    const panes = container.querySelector("[data-panes]");
+    expect(panes?.className).toContain("grid-rows-1");
+    expect(panes?.className).toContain("min-h-0");
+
+    for (const pane of container.querySelectorAll("[data-pane]")) {
+      expect(pane.className).toContain("min-h-0");
+      expect(pane.className).toContain("overflow-hidden");
+    }
+  });
 });
