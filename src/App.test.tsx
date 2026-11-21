@@ -60,6 +60,10 @@ describe("App (shell Inkline)", () => {
     expect(
       container.querySelector('aside[aria-label="Explorador de archivos"]')?.className,
     ).toContain("min-h-0");
+    // El rail también: su espaciador empujaba tema y Preferencias fuera de vista.
+    expect(container.querySelector('aside[aria-label="Barra de Inkline"]')?.className).toContain(
+      "min-h-0",
+    );
 
     fireEvent.click(screen.getByTitle(/Mostrar \/ ocultar el explorador/));
 

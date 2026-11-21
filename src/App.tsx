@@ -316,7 +316,7 @@ export default function App() {
     >
       <aside
         aria-label="Barra de Inkline"
-        className="flex flex-col items-center gap-2 border-r border-border bg-ink-rail px-2 py-4"
+        className="flex min-h-0 flex-col items-center gap-2 overflow-hidden border-r border-border bg-ink-rail px-2 py-4"
       >
         {/* Marca del rail: logo transparente, blanco en oscuro y negro en claro. */}
         <img
