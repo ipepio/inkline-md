@@ -30,6 +30,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { fileNameOf } from "@/lib/workspace";
+import { comboLabel } from "@/lib/platform";
 
 /** Texto exacto del mockup; también es la clave que buscan los tests. */
 export const PALETTE_PLACEHOLDER = "Buscar archivos, contenido o >comandos…";
@@ -86,12 +87,12 @@ export interface CommandPaletteProps {
 
 /** Acciones fijas de la paleta, en el orden en que se muestran. */
 export const PALETTE_ACTIONS: readonly PaletteActionItem[] = [
-  { id: "open", label: "Abrir archivo…", shortcut: "⌘O" },
-  { id: "new", label: "Nuevo documento", shortcut: "⌘N" },
+  { id: "open", label: "Abrir archivo…", shortcut: "O" },
+  { id: "new", label: "Nuevo documento", shortcut: "N" },
   { id: "theme", label: "Alternar tema" },
-  { id: "zoom-in", label: "Aumentar zoom", shortcut: "⌘+" },
-  { id: "zoom-out", label: "Reducir zoom", shortcut: "⌘−" },
-  { id: "zoom-reset", label: "Restablecer zoom", shortcut: "⌘0" },
+  { id: "zoom-in", label: "Aumentar zoom", shortcut: "+" },
+  { id: "zoom-out", label: "Reducir zoom", shortcut: "−" },
+  { id: "zoom-reset", label: "Restablecer zoom", shortcut: "0" },
 ];
 
 /** Icono de cada acción fija, por id. */
@@ -241,7 +242,7 @@ export function CommandPalette({
                 <PaletteActionIcon id={action.id} />
                 <span className="truncate">{action.label}</span>
                 {action.shortcut ? (
-                  <CommandShortcut>{action.shortcut}</CommandShortcut>
+                  <CommandShortcut>{comboLabel(action.shortcut)}</CommandShortcut>
                 ) : null}
               </CommandItem>
             ))}

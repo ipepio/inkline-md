@@ -15,6 +15,7 @@ import { useEffect, useRef } from "react";
 import { Code2Icon, Link2Icon, type LucideIcon } from "lucide-react";
 import { cn } from "cn";
 import type { FormatKind } from "@/lib/editor/format";
+import { modifierLabel, type ModifierLabel } from "@/lib/platform";
 
 export interface FormatToolbarProps {
   onFormat: (kind: FormatKind) => void;
@@ -36,15 +37,17 @@ interface ToolGroup {
   tools: readonly Tool[];
 }
 
-const GROUPS: readonly ToolGroup[] = [
+/** Grupos del mockup; los atajos visibles usan el modificador de la plataforma. */
+function toolbarGroups(mod: ModifierLabel): readonly ToolGroup[] {
+  const groups: readonly ToolGroup[] = [
   {
     label: "Énfasis",
     tools: [
-      { kind: "bold", label: "Negrita (⌘B)", title: "Negrita (⌘B)", glyph: "B", className: "font-bold" },
+      { kind: "bold", label: `Negrita (${mod}B)`, title: `Negrita (${mod}B)`, glyph: "B", className: "font-bold" },
       {
         kind: "italic",
-        label: "Cursiva (⌘I)",
-        title: "Cursiva (⌘I)",
+        label: `Cursiva (${mod}I)`,
+        title: `Cursiva (${mod}I)`,
         glyph: "I",
         className: "font-bold italic",
       },
@@ -74,7 +77,9 @@ const GROUPS: readonly ToolGroup[] = [
       { kind: "mermaid", label: "Diagrama Mermaid", title: "Diagrama Mermaid", glyph: "◇" },
     ],
   },
-];
+  ];
+  return groups;
+}
 
 /**
  * Recorrido de teclado con un único tab stop cuando `focusgroup` no existe
@@ -144,6 +149,7 @@ const TOOL_BUTTON =
 export function FormatToolbar({ onFormat, disabled = false }: FormatToolbarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   useRovingFocus(barRef);
+  const groups = toolbarGroups(modifierLabel());
 
   return (
     <div
@@ -154,7 +160,7 @@ export function FormatToolbar({ onFormat, disabled = false }: FormatToolbarProps
       {...({ focusgroup: "toolbar wrap" } as Record<string, string>)}
       className="flex items-center gap-[3px]"
     >
-      {GROUPS.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => (
         <fieldset
           key={group.label}
           aria-label={group.label}

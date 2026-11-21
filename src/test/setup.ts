@@ -20,3 +20,11 @@ if (!("ResizeObserver" in globalThis)) {
   }
   vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 }
+
+// La app muestra los atajos según la plataforma (lib/platform). Los tests
+// corren «como macOS» para que las aserciones con ⌘ sean estables; los casos
+// de Windows/Linux redefinen la plataforma desde cada test (platform.test).
+Object.defineProperty(window.navigator, "platform", {
+  value: "MacIntel",
+  configurable: true,
+});

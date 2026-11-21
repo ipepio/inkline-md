@@ -57,6 +57,7 @@ import {
   isZoom,
   type Settings,
 } from "@/lib/settings";
+import { comboLabel } from "@/lib/platform";
 
 export interface SettingsDialogProps {
   open: boolean;
@@ -89,20 +90,23 @@ export const SETTINGS_SECTIONS: readonly SectionMeta[] = [
 
 export interface ShortcutRow {
   action: string;
-  keys: string;
+  /** Teclas sin modificador; se pintan con el de la plataforma. */
+  keys: readonly string[];
 }
 
-/** Tabla de atajos del mockup, en el mismo orden y con la misma copia. */
+/** Tabla de atajos; el modificador se resuelve según la plataforma. */
 export const SHORTCUTS: readonly ShortcutRow[] = [
-  { action: "Buscar archivos y contenido", keys: "⌘ / Ctrl + K" },
-  { action: "Buscar en documento", keys: "⌘ / Ctrl + F" },
-  { action: "Mostrar / ocultar explorador", keys: "⌘ / Ctrl + \\" },
-  { action: "Preferencias", keys: "⌘ / Ctrl + ," },
-  { action: "Abrir archivo", keys: "⌘ / Ctrl + O" },
-  { action: "Guardar", keys: "⌘ / Ctrl + S" },
-  { action: "Exportar HTML", keys: "⌘ / Ctrl + E" },
-  { action: "Negrita / cursiva", keys: "⌘ / Ctrl + B / I" },
-  { action: "Nuevo documento", keys: "⌘ / Ctrl + N" },
+  { action: "Buscar archivos y contenido", keys: ["K"] },
+  { action: "Buscar en documento", keys: ["F"] },
+  { action: "Mostrar / ocultar explorador", keys: ["\\"] },
+  { action: "Preferencias", keys: [","] },
+  { action: "Abrir archivo", keys: ["O"] },
+  { action: "Guardar", keys: ["S"] },
+  { action: "Exportar HTML", keys: ["E"] },
+  { action: "Negrita / cursiva", keys: ["B", "I"] },
+  { action: "Nuevo documento", keys: ["N"] },
+  { action: "Aumentar / reducir zoom", keys: ["+", "−"] },
+  { action: "Restablecer zoom", keys: ["0"] },
 ];
 
 const NAV_BUTTON =
@@ -328,7 +332,7 @@ export function SettingsDialog({
                   </SettingRow>
                   <SettingRow
                     name="Zoom de texto"
-                    note="Escala editor y vista previa; ⌘+ / ⌘− / ⌘0 cambian el nivel."
+                    note={`Escala editor y vista previa; ${comboLabel("+")} / ${comboLabel("−")} / ${comboLabel("0")} cambian el nivel.`}
                   >
                     <SettingSelect
                       label="Zoom de texto"
@@ -527,7 +531,7 @@ export function SettingsDialog({
               <section data-panel="shortcuts">
                 <PanelHead
                   title="Atajos"
-                  intro="Funciona con ⌘ en macOS y Ctrl en Windows / Linux."
+                  intro="Los atajos usan ⌘ en macOS y Ctrl en Windows y Linux."
                 />
                 <table className="w-full border-collapse text-xs">
                   <tbody>
@@ -535,7 +539,7 @@ export function SettingsDialog({
                       <tr key={row.action} className="border-b border-border/60">
                         <td className="py-[11px] pr-1 text-muted-foreground">{row.action}</td>
                         <td className="py-[11px] pl-1 text-right font-mono text-[11px] text-foreground">
-                          {row.keys}
+                          {row.keys.map(comboLabel).join(" / ")}
                         </td>
                       </tr>
                     ))}

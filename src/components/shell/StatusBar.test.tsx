@@ -44,7 +44,9 @@ describe("StatusBar", () => {
     );
 
     expect(screen.getByText("130%")).toBeInTheDocument();
-    expect(container.querySelector('[data-slot="zoom"]')).not.toBeNull();
+    const chip = container.querySelector('[data-slot="zoom"]');
+    expect(chip).not.toBeNull();
+    expect(chip).toHaveAttribute("title", "Zoom de texto (⌘+ / ⌘− / ⌘0)");
   });
 
   it("no muestra el zoom al 100%", () => {

@@ -23,6 +23,7 @@
  */
 
 import { forwardRef, useCallback, useImperativeHandle } from "react";
+import { comboLabel } from "@/lib/platform";
 import {
   ChevronDownIcon,
   CodeIcon,
@@ -221,7 +222,7 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
           icon={CodeIcon}
           label="Exportar HTML"
           description="Archivo autónomo con estilos embebidos"
-          shortcut="⌘E"
+          shortcut={comboLabel("E")}
           disabled={disabled}
           onClick={() => void exportHtml()}
         />

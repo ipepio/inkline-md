@@ -58,6 +58,7 @@ import {
   zoomStep,
   zoomedEditorFontSize,
 } from "@/lib/settings";
+import { comboLabel } from "@/lib/platform";
 import { documentStats } from "@/lib/text";
 import { exportStandaloneHtml } from "@/lib/export/html";
 import { htmlExportFileName } from "@/lib/export/names";
@@ -379,7 +380,7 @@ export default function App() {
           type="button"
           className={cn(RAIL_BUTTON, sidebarOpen && "bg-muted text-foreground")}
           onClick={() => setSidebarOpen((open) => !open)}
-          title="Mostrar / ocultar el explorador (⌘\)"
+          title={`Mostrar / ocultar el explorador (${comboLabel("\\")})`}
         >
           <PanelLeftIcon aria-hidden className="size-[17px]" />
         </button>
@@ -391,7 +392,7 @@ export default function App() {
               new KeyboardEvent("keydown", { metaKey: true, key: "k" }),
             );
           }}
-          title="Buscar archivos y comandos (⌘K)"
+          title={`Buscar archivos y comandos (${comboLabel("K")})`}
         >
           <SearchIcon aria-hidden className="size-[17px]" />
         </button>
@@ -399,7 +400,7 @@ export default function App() {
           type="button"
           className={RAIL_BUTTON}
           onClick={handleNewDoc}
-          title="Nuevo documento (⌘N)"
+          title={`Nuevo documento (${comboLabel("N")})`}
         >
           <PlusIcon aria-hidden className="size-[18px]" />
         </button>
@@ -420,7 +421,7 @@ export default function App() {
           type="button"
           className={RAIL_BUTTON}
           onClick={() => setSettingsOpen(true)}
-          title="Preferencias (⌘,)"
+          title={`Preferencias (${comboLabel(",")})`}
         >
           <SettingsIcon aria-hidden className="size-[17px]" />
         </button>
@@ -454,7 +455,7 @@ export default function App() {
               type="button"
               className="grid size-[29px] place-items-center rounded-[7px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               onClick={handleNewDoc}
-              title="Nuevo documento (⌘N)"
+              title={`Nuevo documento (${comboLabel("N")})`}
             >
               <PlusIcon aria-hidden className="size-3.5" />
             </button>
@@ -557,7 +558,7 @@ export default function App() {
               className="flex h-[33px] items-center gap-2 rounded-[8px] bg-primary px-3 text-[11px] font-bold text-primary-foreground transition-[filter] hover:brightness-110 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               Guardar
-              <span className="font-mono text-[10px] font-normal opacity-70">⌘S</span>
+              <span className="font-mono text-[10px] font-normal opacity-70">{comboLabel("S")}</span>
             </button>
           </div>
         </header>
@@ -578,7 +579,7 @@ export default function App() {
           <button
             type="button"
             onClick={handleNewDoc}
-            title="Nuevo documento (⌘N)"
+            title={`Nuevo documento (${comboLabel("N")})`}
             className="grid size-10 place-items-center border-r border-b border-border/60 text-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             +
@@ -636,7 +637,7 @@ export default function App() {
                   Ningún documento abierto
                 </h2>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Abre un archivo con ⌘O o crea uno nuevo con ⌘N.
+                  Abre un archivo con {comboLabel("O")} o crea uno nuevo con {comboLabel("N")}.
                 </p>
               </div>
             </div>

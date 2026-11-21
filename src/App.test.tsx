@@ -105,4 +105,23 @@ describe("App (shell Inkline)", () => {
 
     resetSettings();
   });
+
+  // Fuera de macOS los atajos se muestran con Ctrl.
+  it("muestra los atajos con Ctrl en Windows", () => {
+    Object.defineProperty(window.navigator, "platform", {
+      value: "Win32",
+      configurable: true,
+    });
+    try {
+      render(<App />);
+
+      expect(screen.getByTitle("Preferencias (Ctrl+,)")).toBeInTheDocument();
+      expect(screen.getByText(/crea uno nuevo con Ctrl\+N/)).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window.navigator, "platform", {
+        value: "MacIntel",
+        configurable: true,
+      });
+    }
+  });
 });

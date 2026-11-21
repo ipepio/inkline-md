@@ -153,13 +153,16 @@ describe("SettingsDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Atajos" }));
 
-    expect(screen.getByText(/Funciona con ⌘ en macOS y Ctrl en Windows \/ Linux\./)).toBeInTheDocument();
-    expect(screen.getAllByRole("row")).toHaveLength(9);
+    expect(screen.getByText(/Los atajos usan ⌘ en macOS y Ctrl en Windows y Linux\./)).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(11);
     expect(screen.getByText("Buscar archivos y contenido")).toBeInTheDocument();
-    expect(screen.getByText("⌘ / Ctrl + K")).toBeInTheDocument();
+    expect(screen.getByText("⌘K")).toBeInTheDocument();
     expect(screen.getByText("Mostrar / ocultar explorador")).toBeInTheDocument();
-    expect(screen.getByText("⌘ / Ctrl + \\")).toBeInTheDocument();
+    expect(screen.getByText("⌘\\")).toBeInTheDocument();
     expect(screen.getByText("Negrita / cursiva")).toBeInTheDocument();
+    expect(screen.getByText("⌘B / ⌘I")).toBeInTheDocument();
+    expect(screen.getByText("Aumentar / reducir zoom")).toBeInTheDocument();
+    expect(screen.getByText("⌘+ / ⌘−")).toBeInTheDocument();
     expect(screen.getByText("Nuevo documento")).toBeInTheDocument();
   });
 

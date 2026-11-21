@@ -7,6 +7,8 @@
  * cifras las calcula `lib/text`; aquí sólo se componen.
  */
 
+import { comboLabel } from "@/lib/platform";
+
 export interface StatusBarProps {
   /** Nombre del archivo activo; `null` cuando no hay documento abierto. */
   fileName: string | null;
@@ -51,7 +53,11 @@ export function StatusBar({ fileName, line, column, words, lines, status, zoom }
         {words} palabras · {lines} líneas
       </span>
       {zoom !== undefined && zoom !== 100 ? (
-        <span data-slot="zoom" className="shrink-0" title="Zoom de texto (⌘+ / ⌘− / ⌘0)">
+        <span
+          data-slot="zoom"
+          className="shrink-0"
+          title={`Zoom de texto (${comboLabel("+")} / ${comboLabel("−")} / ${comboLabel("0")})`}
+        >
           {zoom}%
         </span>
       ) : null}
