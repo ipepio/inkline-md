@@ -1,3 +1,4 @@
-# pnpm 12: la aprobación de build scripts vive aquí, no en package.json.
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  esbuild: true
+# pnpm 12: esbuild no necesita postinstall
+# (binario vía optional deps de plataforma).
