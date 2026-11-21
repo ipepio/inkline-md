@@ -14,6 +14,7 @@
 
 import { forwardRef, useImperativeHandle, useRef, type ReactNode } from "react";
 import { cn } from "cn";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { FormatToolbar } from "@/components/editor/FormatToolbar";
 import { ModeSwitch } from "@/components/editor/ModeSwitch";
 import {
@@ -37,6 +38,10 @@ export interface EditorWorkspaceProps {
   preview?: ReactNode;
   /** Preferencias de escritura del panel; ausentes, las de por defecto (T3). */
   editorConfig?: EditorConfig;
+  /** Tamaño recordado de cada panel en la vista dividida (porcentajes). */
+  splitLayout?: { editor: number; preview: number };
+  /** Avisa del nuevo reparto cuando se arrastra el divisor. */
+  onSplitLayoutChange?: (layout: { editor: number; preview: number }) => void;
 }
 
 export interface EditorWorkspaceHandle {
@@ -77,7 +82,18 @@ function sizeLabel(contents: string): string {
 
 export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspaceProps>(
   function EditorWorkspace(
-    { doc, theme, mode, onModeChange, onContents, onViewState, preview, editorConfig },
+    {
+      doc,
+      theme,
+      mode,
+      onModeChange,
+      onContents,
+      onViewState,
+      preview,
+      editorConfig,
+      splitLayout,
+      onSplitLayoutChange,
+    },
     ref,
   ) {
     const paneRef = useRef<EditorPaneHandle>(null);
@@ -94,80 +110,106 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
       [],
     );
 
-    return (
-      <div className="flex min-h-0 flex-1 flex-col" data-mode={mode}>
-        <div className="flex h-[49px] min-h-[49px] items-center gap-[3px] border-b border-border px-[17px]">
-          <FormatToolbar
-            onFormat={(kind) => paneRef.current?.applyFormat(kind)}
-            disabled={!showEditor}
-          />
-          <div className="ml-auto">
-            <ModeSwitch mode={mode} onModeChange={onModeChange} />
-          </div>
-        </div>
+  const editorSection = showEditor ? (
+    <section
+      data-pane="editor"
+      aria-label="Editor de Markdown"
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col overflow-hidden",
+        mode === "split" && "border-r border-border",
+      )}
+    >
+      <div className={PANE_HEAD}>
+        <span>
+          <span aria-hidden className="mr-2 text-primary">
+            ●
+          </span>
+          FUENTE / MARKDOWN
+        </span>
+        <span className="font-normal tracking-normal text-ink-faint">
+          UTF-8 · {sizeLabel(doc.contents)}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <EditorPane
+          ref={paneRef}
+          doc={doc}
+          theme={theme}
+          onContents={onContents}
+          onViewState={onViewState}
+          editorConfig={editorConfig}
+        />
+      </div>
+    </section>
+  ) : null;
 
+  const previewSection = showPreview ? (
+    <section
+      data-pane="preview"
+      aria-label="Vista previa"
+      className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-ink-preview"
+    >
+      <div className={PANE_HEAD}>
+        <span>
+          <span aria-hidden className="mr-2 text-primary">
+            ◉
+          </span>
+          VISTA PREVIA
+        </span>
+        <span className="font-normal tracking-normal text-ink-faint">
+          <span aria-hidden className="text-[#94cd75]">
+            ●
+          </span>{" "}
+          GFM + Mermaid
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-20">{preview}</div>
+    </section>
+  ) : null;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col" data-mode={mode}>
+      <div className="flex h-[49px] min-h-[49px] items-center gap-[3px] border-b border-border px-[17px]">
+        <FormatToolbar
+          onFormat={(kind) => paneRef.current?.applyFormat(kind)}
+          disabled={!showEditor}
+        />
+        <div className="ml-auto">
+          <ModeSwitch mode={mode} onModeChange={onModeChange} />
+        </div>
+      </div>
+
+      {mode === "split" ? (
+        // Vista dividida redimensionable: los tamaños se recuerdan por documento.
+        <ResizablePanelGroup
+          orientation="horizontal"
+          defaultLayout={splitLayout}
+          onLayoutChange={(layout: Record<string, number>) => {
+            const editor = layout.editor;
+            const previewSize = layout.preview;
+            // Sólo se persiste un reparto válido y completo.
+            if (typeof editor !== "number" || typeof previewSize !== "number") return;
+            onSplitLayoutChange?.({ editor, preview: previewSize });
+          }}
+          className="min-h-0 flex-1"
+        >
+          <ResizablePanel id="editor" minSize="20" className="min-w-0">
+            {editorSection}
+          </ResizablePanel>
+          <ResizableHandle withHandle aria-label="Redimensionar paneles" />
+          <ResizablePanel id="preview" minSize="20" className="min-w-0">
+            {previewSection}
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
         <div
           data-panes={PANES[mode]}
           className={cn("grid min-h-0 flex-1 grid-rows-1", PANES[mode])}
         >
-          {showEditor ? (
-            <section
-              data-pane="editor"
-              aria-label="Editor de Markdown"
-              className={cn(
-                "flex min-h-0 min-w-0 flex-col overflow-hidden",
-                mode === "split" && "border-r border-border",
-              )}
-            >
-              <div className={PANE_HEAD}>
-                <span>
-                  <span aria-hidden className="mr-2 text-primary">
-                    ●
-                  </span>
-                  FUENTE / MARKDOWN
-                </span>
-                <span className="font-normal tracking-normal text-ink-faint">
-                  UTF-8 · {sizeLabel(doc.contents)}
-                </span>
-              </div>
-              <div className="min-h-0 flex-1">
-                <EditorPane
-                  ref={paneRef}
-                  doc={doc}
-                  theme={theme}
-                  onContents={onContents}
-                  onViewState={onViewState}
-                  editorConfig={editorConfig}
-                />
-              </div>
-            </section>
-          ) : null}
-
-          {showPreview ? (
-            <section
-              data-pane="preview"
-              aria-label="Vista previa"
-              className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-ink-preview"
-            >
-              <div className={PANE_HEAD}>
-                <span>
-                  <span aria-hidden className="mr-2 text-primary">
-                    ◉
-                  </span>
-                  VISTA PREVIA
-                </span>
-                <span className="font-normal tracking-normal text-ink-faint">
-                  <span aria-hidden className="text-[#94cd75]">
-                    ●
-                  </span>{" "}
-                  GFM + Mermaid
-                </span>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-20">{preview}</div>
-            </section>
-          ) : null}
+          {editorSection}
+          {previewSection}
         </div>
-      </div>
-    );
-  },
-);
+      )}
+    </div>
+  );
+});

@@ -82,6 +82,18 @@ function displayName(name: string): string {
 
 let untitledCounter = 0;
 
+/** Reparto recordado del divisor; se descarta cualquier valor no numérico. */
+function readSplitLayout(
+  viewState: Record<string, unknown> | undefined,
+): { editor: number; preview: number } | undefined {
+  const raw = viewState?.splitLayout as { editor?: unknown; preview?: unknown } | undefined;
+  if (!raw || typeof raw.editor !== "number" || typeof raw.preview !== "number") {
+    return undefined;
+  }
+  if (!Number.isFinite(raw.editor) || !Number.isFinite(raw.preview)) return undefined;
+  return { editor: raw.editor, preview: raw.preview };
+}
+
 const RAIL_BUTTON =
   "grid size-[39px] place-items-center rounded-[9px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
@@ -579,6 +591,10 @@ export default function App() {
               wordWrap: settings.wordWrap,
               spellcheck: settings.spellcheck,
             }}
+            splitLayout={readSplitLayout(active.viewState)}
+            onSplitLayoutChange={(layout) =>
+              setViewState(active.id, { ...active.viewState, splitLayout: layout })
+            }
           />
         ) : (
           <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">

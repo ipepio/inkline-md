@@ -254,10 +254,11 @@ export const EditorPane = forwardRef<EditorPaneHandle, EditorPaneProps>(function
   );
 
   return (
-    <div className="h-full min-h-0 overflow-hidden" data-editor-theme={theme}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden" data-editor-theme={theme}>
       <CodeMirror
         value={doc.contents}
         height="100%"
+        style={{ height: "100%", minHeight: 0 }}
         theme="none"
         extensions={extensions}
         basicSetup={basicSetup}

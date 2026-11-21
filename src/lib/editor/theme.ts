@@ -49,6 +49,9 @@ export function editorTheme(theme: Theme): Extension {
         color: palette.text,
         fontSize: "12px",
         height: "100%",
+        // Sin esto el editor crece con el documento dentro de un flex y el
+        // scroller de CodeMirror nunca recibe una altura acotada (sin scroll).
+        minHeight: "0",
       },
       "&.cm-focused": { outline: "none" },
       ".cm-scroller": {
@@ -56,6 +59,7 @@ export function editorTheme(theme: Theme): Extension {
         fontSize: "12px",
         lineHeight: "25px",
         overflow: "auto",
+        minHeight: "0",
       },
       ".cm-content": {
         fontFamily: MONO,

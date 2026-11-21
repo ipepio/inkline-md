@@ -36,15 +36,14 @@ describe("EditorWorkspace", () => {
     expect(screen.queryByText("contenido renderizado")).not.toBeInTheDocument();
   });
 
-  it("en modo Split reparte 50/50 con un borde entre columnas", () => {
+  it("en modo Split reparte en dos paneles con un borde entre columnas", () => {
     const { container } = renderWorkspace("split");
-    const panes = container.querySelector('[data-panes]');
     const editor = container.querySelector('[data-pane="editor"]');
 
-    expect(panes).toHaveAttribute(
-      "data-panes",
-      "grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
-    );
+    // La vista dividida es redimensionable: grupo + dos paneles + divisor.
+    expect(container.querySelector('[data-slot="resizable-panel-group"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="resizable-handle"]')).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-slot="resizable-panel"]')).toHaveLength(2);
     expect(editor).toHaveClass("border-r");
     expect(screen.getByText("contenido renderizado")).toBeInTheDocument();
   });
@@ -85,14 +84,15 @@ describe("EditorWorkspace", () => {
   });
 
   // Regresión QA: sin esta cadena de alturas los paneles crecían con el
-  // documento, el shell los recortaba y el scroll no funcionaba. La fila del
-  // grid debe estar acotada (grid-rows-1) y cada panel debe poder encogerse.
-  it("acota la altura de la fila y de cada panel para que el scroll funcione", () => {
+  // documento, el shell los recortaba y el scroll no funcionaba. En las vistas
+  // de una sola columna la fila del grid debe estar acotada (grid-rows-1) y
+  // cada panel debe poder encogerse.
+  it("acota la fila y los paneles en las vistas de una sola columna", () => {
     const { container } = render(
       <EditorWorkspace
         doc={{ id: "d1", contents: "# hola\n\ntexto", viewState: {} }}
         theme="dark"
-        mode="split"
+        mode="preview"
         onModeChange={() => {}}
         onContents={() => {}}
         onViewState={() => {}}
@@ -108,5 +108,30 @@ describe("EditorWorkspace", () => {
       expect(pane.className).toContain("min-h-0");
       expect(pane.className).toContain("overflow-hidden");
     }
+  });
+
+  // Vista dividida redimensionable: dos paneles y un divisor arrastrable que
+  // avisa del nuevo reparto (el shell lo guarda por documento).
+  it("monta paneles redimensionables en split y reporta el reparto", () => {
+    const onSplitLayoutChange = vi.fn();
+    const { container } = render(
+      <EditorWorkspace
+        doc={{ id: "d1", contents: "# hola", viewState: {} }}
+        theme="dark"
+        mode="split"
+        onModeChange={() => {}}
+        onContents={() => {}}
+        onViewState={() => {}}
+        preview={<p>preview</p>}
+        onSplitLayoutChange={onSplitLayoutChange}
+      />,
+    );
+
+    expect(container.querySelector('[data-slot="resizable-panel-group"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="resizable-handle"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-slot="resizable-panel"]').length).toBe(2);
+    // Los dos paneles siguen presentes con su cabecera.
+    expect(screen.getByLabelText("Editor de Markdown")).toBeInTheDocument();
+    expect(screen.getByLabelText("Vista previa")).toBeInTheDocument();
   });
 });
