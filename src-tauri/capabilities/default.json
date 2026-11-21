@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "Capabilities base de Inkline: núcleo, diálogo y apertura externa",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default", "opener:default"]
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "opener:default",
+    "opener:allow-open-path",
+    "opener:allow-reveal-item-in-dir"
+  ]
 }

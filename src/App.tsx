@@ -7,7 +7,7 @@
  * dividida llegan en T3; aquí la lectura ya es real.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -23,12 +23,17 @@ import { FileTree } from "@/components/files/FileTree";
 import { RecentsList } from "@/components/files/RecentsList";
 import { TabsBar } from "@/components/files/TabsBar";
 import { MarkdownView } from "@/components/viewer/MarkdownView";
+import { EditorWorkspace, type EditorWorkspaceHandle } from "@/components/editor/EditorWorkspace";
+import { ExportMenu, type ExportMenuHandle } from "@/components/export/ExportMenu";
+import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
 import { useTheme } from "@/hooks/useTheme";
 import {
   closeDoc,
   markSaved,
   openDoc,
   selectDoc,
+  setContents,
+  setViewState,
   useDocuments,
 } from "@/lib/documents";
 import {
@@ -73,6 +78,8 @@ export default function App() {
     () => docs.find((doc) => doc.id === activeId) ?? null,
     [docs, activeId],
   );
+  const editorRef = useRef<EditorWorkspaceHandle>(null);
+  const exportRef = useRef<ExportMenuHandle>(null);
 
   const [root, setRoot] = useState<string | null>(null);
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -180,6 +187,15 @@ export default function App() {
       } else if (key === "n") {
         event.preventDefault();
         handleNewDoc();
+      } else if (key === "b") {
+        event.preventDefault();
+        editorRef.current?.applyFormat("bold");
+      } else if (key === "i") {
+        event.preventDefault();
+        editorRef.current?.applyFormat("italic");
+      } else if (key === "e") {
+        event.preventDefault();
+        void exportRef.current?.exportHtml();
       } else if (key === "\\") {
         event.preventDefault();
         setSidebarOpen((open) => !open);
@@ -213,6 +229,18 @@ export default function App() {
         path: isUntitled(doc.path) ? "" : doc.path,
       })),
     [docs],
+  );
+
+  // Vista por documento (persistida en viewState); la nueva vista llega en T3.
+  const activeMode = active?.viewState.mode;
+  const mode: WorkspaceMode = isWorkspaceMode(activeMode) ? activeMode : "split";
+
+  const handleModeChange = useCallback(
+    (next: WorkspaceMode) => {
+      if (!active) return;
+      setViewState(active.id, { ...active.viewState, mode: next });
+    },
+    [active],
   );
 
   return (
@@ -416,44 +444,63 @@ export default function App() {
           </div>
         </header>
 
-        <TabsBar
-          docs={docs.map((doc) => ({
-            id: doc.id,
-            name: displayName(doc.path),
-            dirty: doc.dirty,
-          }))}
-          activeId={activeId}
-          onSelect={selectDoc}
-          onClose={closeDoc}
-        />
+        <div className="flex min-h-0 items-stretch bg-ink-side">
+          <div className="min-w-0 flex-1">
+            <TabsBar
+              docs={docs.map((doc) => ({
+                id: doc.id,
+                name: displayName(doc.path),
+                dirty: doc.dirty,
+              }))}
+              activeId={activeId}
+              onSelect={selectDoc}
+              onClose={closeDoc}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleNewDoc}
+            title="Nuevo documento (⌘N)"
+            className="grid size-10 place-items-center border-r border-b border-border/60 text-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            +
+          </button>
+          <div className="flex items-center border-b border-border px-3">
+            <ExportMenu
+              ref={exportRef}
+              markdown={active ? active.contents : null}
+              docTitle={active ? displayName(active.path) : ""}
+              theme={theme}
+              onStatus={setStatus}
+            />
+          </div>
+        </div>
 
-        <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">
-          <div className="flex h-[53px] min-h-[53px] items-center justify-between border-b border-border/60 px-6">
-            <span className="text-[10px] font-extrabold tracking-[1.35px] text-muted-foreground">
-              <span aria-hidden className="mr-2 text-primary">
-                ◉
-              </span>
-              LECTURA
-            </span>
-            <span className="text-[10px] text-ink-faint">GFM + Mermaid</span>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-20">
-            {active ? (
-              <MarkdownView markdown={active.contents} theme={theme} />
-            ) : (
-              <div className="grid h-full place-items-center text-center">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">
-                    Ningún documento abierto
-                  </h2>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Abre un archivo con ⌘O o crea uno nuevo con ⌘N.
-                  </p>
-                </div>
+        {active ? (
+          <EditorWorkspace
+            ref={editorRef}
+            doc={{ id: active.id, contents: active.contents, viewState: active.viewState }}
+            theme={theme}
+            mode={mode}
+            onModeChange={handleModeChange}
+            onContents={setContents}
+            onViewState={setViewState}
+            preview={<MarkdownView markdown={active.contents} theme={theme} />}
+          />
+        ) : (
+          <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">
+            <div className="grid h-full place-items-center text-center">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">
+                  Ningún documento abierto
+                </h2>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Abre un archivo con ⌘O o crea uno nuevo con ⌘N.
+                </p>
               </div>
-            )}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
         <footer
           aria-live="polite"

@@ -36,6 +36,7 @@ describe("App (shell Inkline)", () => {
     // Acciones del topbar.
     expect(screen.getByRole("button", { name: "Abrir" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Guardar/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Exportar/i })).toBeInTheDocument();
     // Estado vacío del área de lectura.
     expect(screen.getByText("Ningún documento abierto")).toBeInTheDocument();
     expect(screen.getByText(/crea uno nuevo con ⌘N/)).toBeInTheDocument();
