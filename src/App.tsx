@@ -367,12 +367,6 @@ export default function App() {
         >
           <SettingsIcon aria-hidden className="size-[17px]" />
         </button>
-        <div
-          aria-hidden
-          className="grid size-[29px] place-items-center rounded-full bg-primary/70 text-[10px] font-extrabold text-primary-foreground"
-        >
-          IL
-        </div>
       </aside>
 
       {sidebarOpen ? (
@@ -436,15 +430,6 @@ export default function App() {
               recents={recents}
               onOpenFile={(path) => void handleOpenFile(path)}
             />
-          </div>
-          <div className="border-t border-border/60 px-5 pt-4 pb-4">
-            <strong className="flex items-center gap-2 text-[11px] font-bold">
-              <span aria-hidden className="inline-block size-[7px] rounded-full bg-primary shadow-[0_0_0_4px] shadow-accent" />
-              Local-first workspace
-            </strong>
-            <p className="mt-2 ml-[15px] text-[10px] leading-relaxed text-muted-foreground">
-              Archivos, pestañas y cambios bajo tu control. Sin cuenta ni servidor.
-            </p>
           </div>
         </aside>
       ) : null}

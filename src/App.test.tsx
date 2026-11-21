@@ -40,7 +40,9 @@ describe("App (shell Inkline)", () => {
     // Estado vacío del área de lectura.
     expect(screen.getByText("Ningún documento abierto")).toBeInTheDocument();
     expect(screen.getByText(/crea uno nuevo con ⌘N/)).toBeInTheDocument();
-    // Pie local-first.
-    expect(screen.getByText("Local-first workspace")).toBeInTheDocument();
+    // QA humano: sin pie Local-first ni avatar IL en el rail; Preferencias accesible.
+    expect(screen.queryByText("Local-first workspace")).not.toBeInTheDocument();
+    expect(screen.queryByText("IL")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Preferencias (⌘,)")).toBeInTheDocument();
   });
 });
