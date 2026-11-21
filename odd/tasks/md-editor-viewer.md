@@ -1,6 +1,6 @@
 # md-editor-viewer — Inkline: Tauri 2 markdown studio (React + Tailwind + shadcn)
 
-Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live preview), file drawer, multi-document tabs. Brand: **Inkline — Markdown Studio** (reference mockup: `design/inkline/inkline-markdown-studio.html`). Status: product defined, orchestration prepared; source writes await the user's explicit go.
+Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live preview), file drawer, multi-document tabs. Brand: **Inkline — Markdown Studio** (reference mockup: `design/inkline/inkline-markdown-studio.html`). Status: implementation authorized («Adelante hasta terminar»); T1 done (c5a0315), T2 ∥ T4 delegated to DeepSeek workers.
 
 ## Specs
 
@@ -15,7 +15,7 @@ Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live prev
 
 ## Tasks
 
-- T1 — S1,S3,S5 — route: parent inline — Skeleton: own git repo, Tauri 2 + Vite + React + TS + Tailwind + shadcn/ui, Rust file commands (read, atomic write), open/save one .md — commit: pend.
+- T1 — S1,S3,S5 — route: parent inline — Skeleton: own git repo, Tauri 2 + Vite + React + TS + Tailwind + shadcn/ui, Rust file commands (read, atomic write), open/save one .md — commit: c5a0315 (main).
 - T2 — S2,S4,S6 — route: worker — View mode: markdown-it GFM + Shiki + Mermaid + Inkline readable styles + light/dark theme — commit: pend.
 - T3 — S2,S4,S6 — route: worker — Edit mode: CodeMirror 6, live preview (split), Editor/Split/Preview switch, format toolbar — commit: pend.
 - T4 — S2,S4 — route: worker — File drawer: folder tree (choosable root), multi-doc tabs with per-tab state, persistent recents, ⌘K palette — commit: pend.
@@ -28,3 +28,5 @@ Desktop Markdown editor/viewer on Tauri 2: dual mode (view / edit with live prev
 - **L2**: «te diría que antes que vue, react y shadcn con tailwind, casi que lo prefiero»
 - **L3**: «/Users/ipepio/Desktop/inkline-markdown-studio.html puedes tomar ese html como mockups y brand. con esto puedes orquestar agentes de deepseek para hacerlo? por cierto antes de eso, instalate esta skill para este repo https://github.com/GoogleChrome/modern-web-guidance» — dispositions: Inkline brand adopted (S6); skill installed (211 files, Apache-2.0); mockup copied to `design/inkline/`; worker definition created at `.pi/agents/gentle-ai-worker.md` (nan/deepseek-v4-flash); orchestration confirmed feasible (S8).
 - **L4** (2026-11-21): ODD artifacts created — this document, visible todo (T1–T6), Engram mirrors. No source writes yet; T1 awaits the user's explicit go.
+- **L5**: «Adelante hasta terminar. paraleliza lo que necesites/creas» — explicit go; parallelization left to the parent's judgment.
+- **L6** (2026-11-21): T1 DONE inline — commits 34b73aa (setup: ODD doc, brand reference, guidance skill, worker role) and c5a0315 (skeleton) on main; branch feat/inkline-v1 opened. Gates observed: pnpm build ✓ (tsc -b + vite build), pnpm test ✓ 1/1, cargo test --lib ✓ 3/3 (atomic write leaves no temporaries, rejects parentless paths; read_file errors on missing). Setup notes: shadcn CLI 4.23.0 broken in this env → components generated with shadcn@4.22.0 (base-nova style over @base-ui/react); vitest 2.1 caused a dual-vite type clash → upgraded to vitest 3.2 (one orphaned vite@5 remains in the pnpm store, cosmetic).
