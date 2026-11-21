@@ -105,8 +105,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* La ventana de Tauri nunca scrollea como página: el scroll vive dentro de
+     los paneles. `height: 100%` en la cadena html→body→#root es más fiable que
+     `dvh`, que un WKWebView antiguo ignora (y entonces la página entera mide
+     lo que mide el documento: la barra horizontal acaba al final del texto). */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
   body {
     @apply bg-background text-foreground font-sans;
+    overflow: hidden;
   }
 }
 

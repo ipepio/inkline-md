@@ -320,7 +320,9 @@ export default function App() {
     <div
       className={cn(
         // `overflow-hidden` evita que un hijo con ancho 0 pinte fuera de su celda.
-        "grid h-dvh min-h-[430px] overflow-hidden",
+        // La altura viene de html/body/#root al 100% (ver index.css): no se
+        // depende de `dvh`, que un WKWebView antiguo ignora.
+        "grid h-full min-h-0 overflow-hidden",
         sidebarOpen
           ? "grid-cols-[56px_256px_minmax(0,1fr)]"
           : "grid-cols-[56px_0_minmax(0,1fr)]",
