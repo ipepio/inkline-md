@@ -25,7 +25,13 @@ const path = vi.hoisted(() => ({
   join: vi.fn(async (...parts: string[]) => parts.join("").replace(/\/+/g, "/")),
 }));
 const files = vi.hoisted(() => ({ saveTextFile: vi.fn(async () => {}) }));
+// La conversión real a Word/OpenDocument se ejercita en
+// `lib/export/documents.test.ts`; aquí basta su contrato.
+const office = vi.hoisted(() => ({ exportOfficeDocument: vi.fn() }));
 
+vi.mock("@/lib/export/documents", () => ({
+  exportOfficeDocument: office.exportOfficeDocument,
+}));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ save: dialog.save }));
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openPath: opener.openPath,
@@ -45,6 +51,7 @@ afterEach(() => {
   opener.openPath.mockResolvedValue(undefined);
   opener.revealItemInDir.mockResolvedValue(undefined);
   files.saveTextFile.mockResolvedValue(undefined);
+  office.exportOfficeDocument.mockResolvedValue(null);
 });
 
 const props = {
@@ -81,6 +88,75 @@ describe("ExportMenu", () => {
     expect(
       screen.getByText("Abre el diálogo de impresión del sistema"),
     ).toBeInTheDocument();
+  });
+
+  it("añade Word y OpenDocument en un grupo propio tras un separador", async () => {
+    render(<ExportMenu {...props} />);
+    await openMenu();
+
+    expect(screen.getByText("Exportar a Word (.docx)")).toBeInTheDocument();
+    expect(screen.getByText("Documento de Word moderno")).toBeInTheDocument();
+    expect(screen.getByText("Exportar a OpenDocument (.odt)")).toBeInTheDocument();
+    expect(screen.getByText("Para LibreOffice y OpenOffice")).toBeInTheDocument();
+    // Markdown · HTML/PDF · formatos de oficina: dos separadores, no tres grupos sueltos.
+    expect(screen.getAllByRole("separator")).toHaveLength(2);
+  });
+
+  it("deshabilita los formatos de oficina cuando no hay documento activo", async () => {
+    render(<ExportMenu {...props} markdown={null} />);
+    await openMenu();
+
+    for (const label of ["Exportar a Word (.docx)", "Exportar a OpenDocument (.odt)"]) {
+      const item = screen.getByText(label).closest("[role='menuitem']");
+      expect(item).not.toBeNull();
+      expect(item).toHaveAttribute("aria-disabled", "true");
+    }
+  });
+
+  it("exporta a Word al pulsar «Exportar a Word (.docx)»", async () => {
+    office.exportOfficeDocument.mockResolvedValue("/Users/yo/guia.docx");
+    render(<ExportMenu {...props} />);
+    await openMenu();
+
+    fireEvent.click(screen.getByText("Exportar a Word (.docx)"));
+
+    await waitFor(() =>
+      expect(office.exportOfficeDocument).toHaveBeenCalledWith("# Guía\n\nTexto.", "guia.md", "docx"),
+    );
+    expect(props.onStatus).toHaveBeenCalledWith("Exportado: /Users/yo/guia.docx");
+    // El .docx lo escribe textutil en Rust: el frontend no escribe texto.
+    expect(files.saveTextFile).not.toHaveBeenCalled();
+  });
+
+  it("informa la cancelación del formato OpenDocument sin lanzar", async () => {
+    office.exportOfficeDocument.mockResolvedValue(null);
+    render(<ExportMenu {...props} />);
+    await openMenu();
+
+    fireEvent.click(screen.getByText("Exportar a OpenDocument (.odt)"));
+
+    await waitFor(() => expect(props.onStatus).toHaveBeenCalledWith("Exportación cancelada"));
+    expect(office.exportOfficeDocument).toHaveBeenCalledWith(
+      "# Guía\n\nTexto.",
+      "guia.md",
+      "odt",
+    );
+  });
+
+  it("convierte un fallo de conversión en un mensaje de estado", async () => {
+    office.exportOfficeDocument.mockRejectedValue(
+      new Error("no se pudo convertir a docx: The folder doesn’t exist."),
+    );
+    render(<ExportMenu {...props} />);
+    await openMenu();
+
+    fireEvent.click(screen.getByText("Exportar a Word (.docx)"));
+
+    await waitFor(() =>
+      expect(props.onStatus).toHaveBeenCalledWith(
+        "Error al exportar: no se pudo convertir a docx: The folder doesn’t exist.",
+      ),
+    );
   });
 
   it("deshabilita las acciones cuando no hay documento activo", async () => {

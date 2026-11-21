@@ -13,6 +13,10 @@
  *   impresión de forma fiable, así que el PDF se obtiene desde el navegador;
  *   el mensaje de estado se lo dice a la persona usuaria en sus términos.
  *
+ * Y, desde T7 (S4), un segundo grupo con dos formatos de oficina: Word (.docx)
+ * y OpenDocument (.odt). Inkline no escribe esos archivos: el HTML estructural
+ * viaja al comando `convert_to_office` de Rust, que ejecuta `textutil`.
+ *
  * El atajo ⌘E lo registra el shell: este componente sólo expone
  * `exportHtml()` en su handle imperativo. Ninguna operación lanza al llamador:
  * todo el resultado se comunica por `onStatus`.
@@ -24,6 +28,8 @@ import {
   CodeIcon,
   DownloadIcon,
   FileTextIcon,
+  FileType2Icon,
+  FileTypeIcon,
   PrinterIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { exportStandaloneHtml, type ExportTheme } from "@/lib/export/html";
 import type { PageSize } from "@/lib/settings";
+import { exportOfficeDocument, type OFFICE_FORMATS } from "@/lib/export/documents";
 import { htmlExportFileName, markdownExportFileName } from "@/lib/export/names";
 import {
   HTML_EXPORT_FILTERS,
@@ -174,8 +181,24 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
     }
   }, [docTitle, markdown, onStatus, pageSize, theme]);
 
-  useImperativeHandle(ref, () => ({ exportHtml }), [exportHtml]);
+  /** Convierte a Word/OpenDocument en el backend; nunca lanza. */
+  const exportOffice = useCallback(
+    async (format: OFFICE_FORMATS): Promise<void> => {
+      if (markdown === null) {
+        onStatus(EXPORT_STATUS.noDocument);
+        return;
+      }
+      try {
+        const saved = await exportOfficeDocument(markdown, docTitle, format);
+        onStatus(saved === null ? EXPORT_STATUS.cancelled : EXPORT_STATUS.saved(saved));
+      } catch (error) {
+        onStatus(EXPORT_STATUS.failed(error));
+      }
+    },
+    [docTitle, markdown, onStatus],
+  );
 
+  useImperativeHandle(ref, () => ({ exportHtml }), [exportHtml]);
   const disabled = markdown === null;
 
   return (
@@ -208,6 +231,21 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
           description="Abre el diálogo de impresión del sistema"
           disabled={disabled}
           onClick={() => void printDocument()}
+        />
+        <DropdownMenuSeparator className="my-1.5" />
+        <ExportItem
+          icon={FileTypeIcon}
+          label="Exportar a Word (.docx)"
+          description="Documento de Word moderno"
+          disabled={disabled}
+          onClick={() => void exportOffice("docx")}
+        />
+        <ExportItem
+          icon={FileType2Icon}
+          label="Exportar a OpenDocument (.odt)"
+          description="Para LibreOffice y OpenOffice"
+          disabled={disabled}
+          onClick={() => void exportOffice("odt")}
         />
       </DropdownMenuContent>
     </DropdownMenu>

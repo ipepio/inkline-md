@@ -1,4 +1,5 @@
 mod commands;
+mod export;
 mod workspace;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -9,6 +10,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::read_file,
             commands::write_file,
+            export::convert_to_office,
             workspace::list_tree,
             workspace::get_workspace,
             workspace::set_workspace,
