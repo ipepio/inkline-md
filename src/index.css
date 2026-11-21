@@ -109,3 +109,234 @@
     @apply bg-background text-foreground font-sans;
   }
 }
+
+/* ============================================================================
+ * Inkline readable / markdown styles — modo visualización (ODD T2)
+ *
+ * Traducción de las reglas `.readable`, `.lang` y `.diagram` del mockup
+ * (design/inkline/inkline-markdown-studio.html) a los tokens de Inkline.
+ * Sólo se activan dentro de `.inkline-readable`, el contenedor que monta
+ * MarkdownView; viven en `components` para que las utilidades puedan pisarlas.
+ * ========================================================================== */
+@layer components {
+  .inkline-readable {
+    max-inline-size: 700px;
+    margin-inline: auto;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+
+  .inkline-readable > :first-child {
+    margin-block-start: 0;
+  }
+
+  .inkline-readable :is(h1, h2, h3) {
+    font-weight: 780;
+    line-height: 1.3;
+    letter-spacing: -0.04em;
+  }
+
+  .inkline-readable h1 {
+    font-size: 34px;
+    letter-spacing: -1.3px;
+    margin: 0 0 16px;
+  }
+
+  .inkline-readable h2 {
+    font-size: 21px;
+    margin: 34px 0 13px;
+    padding-block-end: 11px;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .inkline-readable h3 {
+    font-size: 17px;
+    margin: 26px 0 9px;
+  }
+
+  .inkline-readable p {
+    margin: 12px 0 17px;
+  }
+
+  .inkline-readable a {
+    color: var(--primary);
+    text-underline-offset: 3px;
+  }
+
+  .inkline-readable blockquote {
+    background: var(--accent);
+    border-inline-start: 3px solid var(--primary);
+    border-radius: 0 6px 6px 0;
+    margin: 21px 0;
+    padding: 7px 16px;
+  }
+
+  /* Tabla GFM: el contenedor es una región desplazable y accesible por teclado. */
+  .inkline-readable .inkline-table {
+    margin: 19px 0 24px;
+    overflow-x: auto;
+    max-inline-size: 100%;
+    container-type: inline-size;
+  }
+
+  .inkline-readable .inkline-table:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  .inkline-readable table {
+    border-collapse: collapse;
+    inline-size: 100%;
+    font-size: 12px;
+  }
+
+  .inkline-readable :is(td, th) {
+    border: 1px solid var(--border);
+    padding: 9px 12px;
+    text-align: start;
+  }
+
+  .inkline-readable th {
+    background: var(--secondary);
+  }
+
+  .inkline-readable tbody tr:nth-child(even) {
+    background: var(--card);
+  }
+
+  .inkline-readable :is(ul, ol) {
+    padding-inline-start: 23px;
+    margin-block: 12px 17px;
+    /* Tailwind Preflight quita los marcadores: se recuperan los del navegador. */
+    list-style: revert;
+  }
+
+  .inkline-readable li {
+    margin-block: 5px;
+  }
+
+  .inkline-readable li.task-list-item {
+    list-style: none;
+    margin-inline-start: -20px;
+  }
+
+  .inkline-readable input[type="checkbox"] {
+    accent-color: var(--primary);
+    cursor: pointer;
+    margin-inline-end: 8px;
+  }
+
+  /* Código inline: nunca el de un bloque. */
+  .inkline-readable :not(pre) > code {
+    font: 11px/1.5 var(--font-mono);
+    background: var(--ink-code);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 5px;
+    color: var(--primary);
+  }
+
+  /* Bloque de código (cerca resaltada o indentada). */
+  .inkline-readable .inkline-code {
+    margin: 20px 0 25px;
+  }
+
+  .inkline-readable .inkline-pre {
+    background: var(--ink-code);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 18px 20px;
+    overflow: auto;
+    font: 11px/1.7 var(--font-mono);
+    margin: 0;
+  }
+
+  .inkline-readable .inkline-pre code {
+    font: inherit;
+  }
+
+  /* Badge de lenguaje: pestaña pegada al borde superior del bloque. */
+  .inkline-readable .inkline-lang {
+    font: 10px var(--font-mono);
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-block-end: 0;
+    border-radius: 6px 6px 0 0;
+    padding: 4px 10px;
+    inline-size: max-content;
+    margin-inline-start: 8px;
+    margin-block: 0 -1px;
+  }
+
+  .inkline-readable .inkline-lang + .inkline-pre {
+    border-start-start-radius: 0;
+  }
+
+  /* Panel de diagrama Mermaid. */
+  .inkline-readable .inkline-diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 23px;
+    overflow: auto;
+    margin: 19px 0;
+  }
+
+  .inkline-readable .inkline-diagram svg {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+
+  .inkline-readable .inkline-diagram__pending {
+    display: block;
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 11px;
+  }
+
+  .inkline-readable .inkline-diagram__caption {
+    font-size: 10px;
+    text-align: center;
+    color: var(--muted-foreground);
+    margin-block-start: 10px;
+  }
+
+  /* Fuente del diagrama cuando Mermaid falla: mismo look que un bloque de código. */
+  .inkline-readable .inkline-diagram__source {
+    background: var(--ink-code);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 18px 20px;
+    overflow: auto;
+    font: 11px/1.7 var(--font-mono);
+    margin-block: 16px 0;
+  }
+
+  .inkline-readable .inkline-diagram__source code {
+    font: inherit;
+  }
+
+  .inkline-readable .inkline-diagram__source[hidden] {
+    display: none;
+  }
+
+  .inkline-readable hr {
+    border: 0;
+    border-block-start: 1px solid var(--border);
+    margin: 29px 0;
+  }
+
+  .inkline-readable img {
+    max-inline-size: 100%;
+    border-radius: 8px;
+  }
+
+  .inkline-readable :is(s, del) {
+    color: var(--muted-foreground);
+  }
+}
