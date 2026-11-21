@@ -18,14 +18,20 @@
  */
 
 import { renderToHtml } from "@/lib/markdown/render";
+import type { PageSize } from "@/lib/settings";
 
 export type ExportTheme = "dark" | "light";
+
+/** A4 es el tamaño de página de fábrica de la exportación. */
+export const DEFAULT_PAGE_SIZE: PageSize = "A4";
 
 export interface ExportOptions {
   /** Tema Inkline activo en el momento de exportar. */
   theme: ExportTheme;
   /** Título del documento; va al `<title>` del archivo exportado. */
   title: string;
+  /** Tamaño de página del bloque `@page` (preferencia de T6). */
+  pageSize?: PageSize;
 }
 
 interface Palette {
@@ -87,9 +93,13 @@ export function escapeHtmlText(value: string): string {
 
 /**
  * Hoja de estilos del archivo exportado: tipografía de lectura del mockup
- * (`.readable`), tokens de Inkline horneados y bloque `@media print`.
+ * (`.readable`), tokens de Inkline horneados y bloque `@media print`. El tamaño
+ * de página (`size:` de `@page`) lo elige la preferencia de exportación.
  */
-export function exportStylesheet(theme: ExportTheme): string {
+export function exportStylesheet(
+  theme: ExportTheme,
+  pageSize: PageSize = DEFAULT_PAGE_SIZE,
+): string {
   const p = PALETTES[theme];
   return `:root {
   color-scheme: ${p.scheme};
@@ -315,7 +325,7 @@ body {
 
 @media print {
   @page {
-    size: A4;
+    size: ${pageSize === "letter" ? "letter" : "A4"};
     margin: 18mm;
   }
 
@@ -390,6 +400,7 @@ export async function exportStandaloneHtml(
   options: ExportOptions,
 ): Promise<string> {
   const body = await renderToHtml(markdown ?? "", { theme: options.theme });
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
 
   return [
     "<!doctype html>",
@@ -399,7 +410,7 @@ export async function exportStandaloneHtml(
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<meta name="color-scheme" content="${PALETTES[options.theme].scheme}">`,
     `<title>${escapeHtmlText(options.title)}</title>`,
-    `<style>\n${exportStylesheet(options.theme)}\n</style>`,
+    `<style>\n${exportStylesheet(options.theme, pageSize)}\n</style>`,
     "</head>",
     "<body>",
     '<article class="inkline-readable">',
