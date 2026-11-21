@@ -32,6 +32,7 @@ import { EditorWorkspace, type EditorWorkspaceHandle } from "@/components/editor
 import { ExportMenu, type ExportMenuHandle } from "@/components/export/ExportMenu";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/shell/StatusBar";
+import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
 import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
 import { useTheme } from "@/hooks/useTheme";
@@ -549,7 +550,10 @@ export default function App() {
           </div>
         </div>
 
-        {active ? (
+        {/* Frontera por documento: un fallo del editor no tumba el shell y se
+            reinicia al cambiar de pestaña (key por documento). */}
+        <ErrorBoundary area="el documento" key={active?.id ?? "sin-documento"}>
+          {active ? (
           <EditorWorkspace
             ref={editorRef}
             doc={{ id: active.id, contents: active.contents, viewState: active.viewState }}
@@ -586,7 +590,8 @@ export default function App() {
               </div>
             </div>
           </section>
-        )}
+          )}
+        </ErrorBoundary>
 
         <StatusBar
           fileName={active ? displayName(active.path) : null}
