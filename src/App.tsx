@@ -387,7 +387,7 @@ export default function App() {
       {sidebarOpen ? (
         <aside
           aria-label="Explorador de archivos"
-          className="flex min-w-0 flex-col border-r border-border bg-ink-side"
+          className="flex min-h-0 min-w-0 flex-col border-r border-border bg-ink-side"
         >
           <div className="px-5 pt-6 pb-3">
             <img
@@ -458,7 +458,10 @@ export default function App() {
 
       {/* `col-start-3` mantiene el panel principal en su columna aunque el
           explorador esté plegado (antes caía en la columna de 0px). */}
-      <main className="col-start-3 flex min-w-0 flex-col">
+      {/* `min-h-0` es obligatorio: como grid item, `<main>` tiene altura mínima
+          automática y crecía más que la ventana; con el recorte del grid eso
+          dejaba el área de trabajo fuera de vista y sin scroll. */}
+      <main className="col-start-3 flex min-h-0 min-w-0 flex-col overflow-hidden">
         <header className="flex h-[57px] min-h-[57px] items-center gap-3 border-b border-border bg-ink-side px-5">
           <p className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-muted-foreground">
             {crumbs ? (

@@ -53,6 +53,14 @@ describe("App (shell Inkline)", () => {
     expect(container.querySelector("main.col-start-3")).not.toBeNull();
     expect(container.querySelector('aside[aria-label="Explorador de archivos"]')).not.toBeNull();
 
+    // Regresión QA: ambos son grid items, así que necesitan `min-h-0`. Sin él
+    // crecían por encima de la ventana, el grid los recortaba y el área de
+    // trabajo dejaba de verse y de hacer scroll.
+    expect(container.querySelector("main.col-start-3")?.className).toContain("min-h-0");
+    expect(
+      container.querySelector('aside[aria-label="Explorador de archivos"]')?.className,
+    ).toContain("min-h-0");
+
     fireEvent.click(screen.getByTitle(/Mostrar \/ ocultar el explorador/));
 
     expect(container.querySelector('aside[aria-label="Explorador de archivos"]')).toBeNull();
