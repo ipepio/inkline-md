@@ -19,6 +19,9 @@ import {
   SunIcon,
 } from "lucide-react";
 import { cn } from "cn";
+import brandIcon from "@/assets/brand/inkline.png";
+import brandWordmark from "@/assets/brand/inklineMD-text-logo.png";
+import brandWordmarkLight from "@/assets/brand/inklineMD-text-logo-white.png";
 import { CommandPalette } from "@/components/files/CommandPalette";
 import { FileTree } from "@/components/files/FileTree";
 import { RecentsList } from "@/components/files/RecentsList";
@@ -302,7 +305,8 @@ export default function App() {
   return (
     <div
       className={cn(
-        "grid h-dvh min-h-[430px]",
+        // `overflow-hidden` evita que un hijo con ancho 0 pinte fuera de su celda.
+        "grid h-dvh min-h-[430px] overflow-hidden",
         sidebarOpen
           ? "grid-cols-[56px_256px_minmax(0,1fr)]"
           : "grid-cols-[56px_0_minmax(0,1fr)]",
@@ -312,12 +316,13 @@ export default function App() {
         aria-label="Barra de Inkline"
         className="flex flex-col items-center gap-2 border-r border-border bg-ink-rail px-2 py-4"
       >
-        <div
-          aria-hidden
-          className="mb-5 grid size-[38px] place-items-center rounded-[11px] bg-primary text-[23px] font-extrabold tracking-tighter text-primary-foreground"
-        >
-          i·
-        </div>
+        <img
+          src={brandIcon}
+          alt="Inkline"
+          width={38}
+          height={38}
+          className="mb-5 size-[38px] rounded-[11px] object-contain"
+        />
         <button
           type="button"
           className={cn(RAIL_BUTTON, sidebarOpen && "bg-muted text-foreground")}
@@ -375,10 +380,17 @@ export default function App() {
           className="flex min-w-0 flex-col border-r border-border bg-ink-side"
         >
           <div className="px-5 pt-6 pb-3">
-            <strong className="text-[19px] font-bold tracking-tight">
-              inkline<span className="text-primary">.</span>
-            </strong>
-            <small className="mt-1 block text-[9px] font-bold tracking-[2.1px] text-ink-faint">
+            <img
+              src={brandWordmarkLight}
+              alt="inkline MD"
+              className="hidden h-[26px] w-auto dark:block"
+            />
+            <img
+              src={brandWordmark}
+              alt="inkline MD"
+              className="block h-[26px] w-auto dark:hidden"
+            />
+            <small className="mt-2 block text-[9px] font-bold tracking-[2.1px] text-ink-faint">
               MARKDOWN STUDIO
             </small>
           </div>
@@ -434,7 +446,9 @@ export default function App() {
         </aside>
       ) : null}
 
-      <main className="flex min-w-0 flex-col">
+      {/* `col-start-3` mantiene el panel principal en su columna aunque el
+          explorador esté plegado (antes caía en la columna de 0px). */}
+      <main className="col-start-3 flex min-w-0 flex-col">
         <header className="flex h-[57px] min-h-[57px] items-center gap-3 border-b border-border bg-ink-side px-5">
           <p className="flex min-w-0 flex-1 items-center gap-2 text-[11px] text-muted-foreground">
             {crumbs ? (
