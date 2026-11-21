@@ -15,6 +15,7 @@ import {
   PanelLeftIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   SunIcon,
 } from "lucide-react";
 import { cn } from "cn";
@@ -25,6 +26,9 @@ import { TabsBar } from "@/components/files/TabsBar";
 import { MarkdownView } from "@/components/viewer/MarkdownView";
 import { EditorWorkspace, type EditorWorkspaceHandle } from "@/components/editor/EditorWorkspace";
 import { ExportMenu, type ExportMenuHandle } from "@/components/export/ExportMenu";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { StatusBar } from "@/components/shell/StatusBar";
+import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
 import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
 import { useTheme } from "@/hooks/useTheme";
 import {
@@ -42,6 +46,11 @@ import {
   saveTextFile,
   saveTextFileAs,
 } from "@/lib/files";
+import { useSettings, updateSettings } from "@/lib/settings";
+import { documentStats } from "@/lib/text";
+import { exportStandaloneHtml } from "@/lib/export/html";
+import { htmlExportFileName } from "@/lib/export/names";
+import { openInBrowser, writeTemporaryExport } from "@/lib/export/operations";
 import {
   fileNameOf,
   flattenFiles,
@@ -73,6 +82,7 @@ const RAIL_BUTTON =
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const settings = useSettings();
   const { docs, activeId } = useDocuments();
   const active = useMemo(
     () => docs.find((doc) => doc.id === activeId) ?? null,
@@ -86,6 +96,8 @@ export default function App() {
   const [recents, setRecents] = useState<RecentFile[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [status, setStatus] = useState("Listo");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmClose, setConfirmClose] = useState<{ id: string; name: string } | null>(null);
 
   // Carga inicial: raíz recordada + recientes persistidos.
   useEffect(() => {
@@ -138,8 +150,9 @@ export default function App() {
 
   const handleNewDoc = useCallback((): void => {
     untitledCounter += 1;
-    openDoc(`${UNTITLED_PREFIX}${Date.now()}-${untitledCounter}`, "");
-  }, []);
+    const id = openDoc(`${UNTITLED_PREFIX}${Date.now()}-${untitledCounter}`, "");
+    setViewState(id, { mode: settings.defaultView });
+  }, [settings.defaultView]);
 
   const handleChooseRoot = useCallback(async (): Promise<void> => {
     const { open } = await import("@tauri-apps/plugin-dialog");
@@ -173,6 +186,43 @@ export default function App() {
     }
   }, [active, registerOpen]);
 
+  const handleCloseDoc = useCallback(
+    (id: string): void => {
+      const doc = docs.find((candidate) => candidate.id === id);
+      if (!doc) return;
+      if (doc.dirty && settings.confirmClose) {
+        setConfirmClose({ id, name: displayName(doc.path) });
+        return;
+      }
+      closeDoc(id);
+    },
+    [docs, settings.confirmClose],
+  );
+
+  const handlePrintFromSettings = useCallback(async (): Promise<void> => {
+    if (!active) {
+      setStatus("No hay ningún documento que exportar");
+      return;
+    }
+    try {
+      const title = displayName(active.path);
+      const html = await exportStandaloneHtml(active.contents, {
+        theme,
+        title,
+        pageSize: settings.pageSize,
+      });
+      const target = await writeTemporaryExport(html, htmlExportFileName(title));
+      const opened = await openInBrowser(target);
+      setStatus(
+        opened === "opened"
+          ? `Impresión: el documento se abrió en tu navegador (${target}).`
+          : `Documento listo para imprimir: ${target}.`,
+      );
+    } catch (err) {
+      setStatus(`Error al exportar: ${String(err)}`);
+    }
+  }, [active, theme, settings.pageSize]);
+
   // Atajos del shell; ⌘K lo registra la propia paleta.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -196,6 +246,9 @@ export default function App() {
       } else if (key === "e") {
         event.preventDefault();
         void exportRef.current?.exportHtml();
+      } else if (key === ",") {
+        event.preventDefault();
+        setSettingsOpen(true);
       } else if (key === "\\") {
         event.preventDefault();
         setSidebarOpen((open) => !open);
@@ -233,7 +286,7 @@ export default function App() {
 
   // Vista por documento (persistida en viewState); la nueva vista llega en T3.
   const activeMode = active?.viewState.mode;
-  const mode: WorkspaceMode = isWorkspaceMode(activeMode) ? activeMode : "split";
+  const mode: WorkspaceMode = isWorkspaceMode(activeMode) ? activeMode : settings.defaultView;
 
   const handleModeChange = useCallback(
     (next: WorkspaceMode) => {
@@ -242,6 +295,9 @@ export default function App() {
     },
     [active],
   );
+
+  const stats = useMemo(() => documentStats(active?.contents ?? ""), [active?.contents]);
+  const cursorState = active?.viewState as { line?: number; column?: number } | undefined;
 
   return (
     <div
@@ -302,6 +358,14 @@ export default function App() {
           ) : (
             <MoonIcon aria-hidden className="size-[17px]" />
           )}
+        </button>
+        <button
+          type="button"
+          className={RAIL_BUTTON}
+          onClick={() => setSettingsOpen(true)}
+          title="Preferencias (⌘,)"
+        >
+          <SettingsIcon aria-hidden className="size-[17px]" />
         </button>
         <div
           aria-hidden
@@ -454,7 +518,7 @@ export default function App() {
               }))}
               activeId={activeId}
               onSelect={selectDoc}
-              onClose={closeDoc}
+              onClose={handleCloseDoc}
             />
           </div>
           <button
@@ -471,6 +535,7 @@ export default function App() {
               markdown={active ? active.contents : null}
               docTitle={active ? displayName(active.path) : ""}
               theme={theme}
+              pageSize={settings.pageSize}
               onStatus={setStatus}
             />
           </div>
@@ -485,7 +550,20 @@ export default function App() {
             onModeChange={handleModeChange}
             onContents={setContents}
             onViewState={setViewState}
-            preview={<MarkdownView markdown={active.contents} theme={theme} />}
+            preview={
+              <MarkdownView
+                markdown={active.contents}
+                theme={theme}
+                className={settings.previewFont === "serif" ? "inkline-serif" : undefined}
+              />
+            }
+            editorConfig={{
+              fontSize: settings.editorFontSize,
+              tabWidth: settings.tabWidth,
+              lineNumbers: settings.lineNumbers,
+              wordWrap: settings.wordWrap,
+              spellcheck: settings.spellcheck,
+            }}
           />
         ) : (
           <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">
@@ -502,20 +580,14 @@ export default function App() {
           </section>
         )}
 
-        <footer
-          aria-live="polite"
-          className="flex h-[31px] min-h-[31px] items-center gap-5 border-t border-border bg-ink-side px-4 font-mono text-[10px] text-muted-foreground"
-        >
-          <span>{status}</span>
-          <span className="flex-1" />
-          <span>
-            <span aria-hidden className="text-primary">
-              ●
-            </span>{" "}
-            Markdown
-          </span>
-          <span>LOCAL</span>
-        </footer>
+        <StatusBar
+          fileName={active ? displayName(active.path) : null}
+          line={cursorState?.line}
+          column={cursorState?.column}
+          words={stats.words}
+          lines={stats.lines}
+          status={status}
+        />
       </main>
 
       <CommandPalette
@@ -526,6 +598,27 @@ export default function App() {
         onOpenDialog={() => void handleOpenDialog()}
         onNewDoc={handleNewDoc}
         onToggleTheme={toggleTheme}
+      />
+
+      <ConfirmCloseDialog
+        open={confirmClose !== null}
+        docName={confirmClose?.name ?? ""}
+        onConfirm={() => {
+          if (confirmClose) closeDoc(confirmClose.id);
+          setConfirmClose(null);
+        }}
+        onCancel={() => setConfirmClose(null)}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onChange={updateSettings}
+        currentRoot={root}
+        onChooseRoot={() => void handleChooseRoot()}
+        onExportHtml={() => void exportRef.current?.exportHtml()}
+        onOpenPrint={() => void handlePrintFromSettings()}
       />
     </div>
   );
