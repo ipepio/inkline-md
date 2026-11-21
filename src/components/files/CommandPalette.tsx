@@ -10,7 +10,16 @@
  */
 
 import { useEffect, useState } from "react";
-import { FileTextIcon, PlusIcon, FolderOpenIcon, SunMoonIcon } from "lucide-react";
+import {
+  FileTextIcon,
+  FolderOpenIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  SunMoonIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Command,
   CommandDialog,
@@ -31,7 +40,13 @@ export interface PaletteDoc {
   path: string;
 }
 
-export type PaletteActionId = "open" | "new" | "theme";
+export type PaletteActionId =
+  | "open"
+  | "new"
+  | "theme"
+  | "zoom-in"
+  | "zoom-out"
+  | "zoom-reset";
 
 export interface PaletteActionItem {
   id: PaletteActionId;
@@ -61,6 +76,12 @@ export interface CommandPaletteProps {
   onOpenDialog: () => void;
   onNewDoc: () => void;
   onToggleTheme: () => void;
+  /** Sube un nivel de zoom de texto (⌘+). */
+  onZoomIn: () => void;
+  /** Baja un nivel de zoom de texto (⌘−). */
+  onZoomOut: () => void;
+  /** Vuelve al 100% (⌘0). */
+  onZoomReset: () => void;
 }
 
 /** Acciones fijas de la paleta, en el orden en que se muestran. */
@@ -68,7 +89,25 @@ export const PALETTE_ACTIONS: readonly PaletteActionItem[] = [
   { id: "open", label: "Abrir archivo…", shortcut: "⌘O" },
   { id: "new", label: "Nuevo documento", shortcut: "⌘N" },
   { id: "theme", label: "Alternar tema" },
+  { id: "zoom-in", label: "Aumentar zoom", shortcut: "⌘+" },
+  { id: "zoom-out", label: "Reducir zoom", shortcut: "⌘−" },
+  { id: "zoom-reset", label: "Restablecer zoom", shortcut: "⌘0" },
 ];
+
+/** Icono de cada acción fija, por id. */
+const ACTION_ICONS: Record<PaletteActionId, LucideIcon> = {
+  open: FolderOpenIcon,
+  new: PlusIcon,
+  theme: SunMoonIcon,
+  "zoom-in": ZoomInIcon,
+  "zoom-out": ZoomOutIcon,
+  "zoom-reset": RotateCcwIcon,
+};
+
+function PaletteActionIcon({ id }: { id: PaletteActionId }) {
+  const Icon = ACTION_ICONS[id];
+  return <Icon aria-hidden />;
+}
 
 /**
  * Filtra documentos y archivos por la consulta y devuelve siempre las acciones.
@@ -104,6 +143,9 @@ export function CommandPalette({
   onOpenDialog,
   onNewDoc,
   onToggleTheme,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
 }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -131,6 +173,9 @@ export function CommandPalette({
   function actionFor(id: PaletteActionId): () => void {
     if (id === "open") return onOpenDialog;
     if (id === "new") return onNewDoc;
+    if (id === "zoom-in") return onZoomIn;
+    if (id === "zoom-out") return onZoomOut;
+    if (id === "zoom-reset") return onZoomReset;
     return onToggleTheme;
   }
 
@@ -193,13 +238,7 @@ export function CommandPalette({
                 value={`action:${action.id}`}
                 onSelect={() => run(actionFor(action.id))}
               >
-                {action.id === "open" ? (
-                  <FolderOpenIcon aria-hidden />
-                ) : action.id === "new" ? (
-                  <PlusIcon aria-hidden />
-                ) : (
-                  <SunMoonIcon aria-hidden />
-                )}
+                <PaletteActionIcon id={action.id} />
                 <span className="truncate">{action.label}</span>
                 {action.shortcut ? (
                   <CommandShortcut>{action.shortcut}</CommandShortcut>

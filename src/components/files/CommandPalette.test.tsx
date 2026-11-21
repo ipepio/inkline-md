@@ -34,7 +34,14 @@ const docs = [
 
 const files = ["/ws/docs/guia.md", "/ws/docs/notas.txt", "/ws/apuntes/frases.md"];
 
-const ACTION_LABELS = ["Abrir archivo…", "Nuevo documento", "Alternar tema"];
+const ACTION_LABELS = [
+  "Abrir archivo…",
+  "Nuevo documento",
+  "Alternar tema",
+  "Aumentar zoom",
+  "Reducir zoom",
+  "Restablecer zoom",
+];
 
 const props = {
   docs,
@@ -44,6 +51,9 @@ const props = {
   onOpenDialog: vi.fn(),
   onNewDoc: vi.fn(),
   onToggleTheme: vi.fn(),
+  onZoomIn: vi.fn(),
+  onZoomOut: vi.fn(),
+  onZoomReset: vi.fn(),
 };
 
 function openPalette() {
@@ -147,5 +157,31 @@ describe("CommandPalette", () => {
     openPalette();
     fireEvent.click(screen.getByText("Abrir archivo…"));
     expect(onOpenDialog).toHaveBeenCalledTimes(1);
+  });
+
+  it("ejecuta los comandos de zoom", () => {
+    const onZoomIn = vi.fn();
+    const onZoomOut = vi.fn();
+    const onZoomReset = vi.fn();
+    render(
+      <CommandPalette
+        {...props}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onZoomReset={onZoomReset}
+      />,
+    );
+
+    openPalette();
+    fireEvent.click(screen.getByText("Aumentar zoom"));
+    expect(onZoomIn).toHaveBeenCalledTimes(1);
+
+    openPalette();
+    fireEvent.click(screen.getByText("Reducir zoom"));
+    expect(onZoomOut).toHaveBeenCalledTimes(1);
+
+    openPalette();
+    fireEvent.click(screen.getByText("Restablecer zoom"));
+    expect(onZoomReset).toHaveBeenCalledTimes(1);
   });
 });

@@ -45,12 +45,14 @@ import { PRINT_IN_BROWSER_NOTE } from "@/components/export/ExportMenu";
 import {
   EDITOR_FONT_SIZES,
   TAB_WIDTHS,
+  ZOOM_LEVELS,
   isDefaultView,
   isEditorFontSize,
   isPageSize,
   isPreviewFont,
   isTabWidth,
   isThemeMode,
+  isZoom,
   type Settings,
 } from "@/lib/settings";
 
@@ -302,6 +304,23 @@ export function SettingsDialog({
                       ]}
                       onValueChange={(value) => {
                         if (isPreviewFont(value)) onChange({ previewFont: value });
+                      }}
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    name="Zoom de texto"
+                    note="Escala editor y vista previa; ⌘+ / ⌘− / ⌘0 cambian el nivel."
+                  >
+                    <SettingSelect
+                      label="Zoom de texto"
+                      value={String(settings.zoom)}
+                      options={ZOOM_LEVELS.map((zoom) => ({
+                        value: String(zoom),
+                        label: `${zoom}%`,
+                      }))}
+                      onValueChange={(value) => {
+                        const zoom = Number(value);
+                        if (isZoom(zoom)) onChange({ zoom });
                       }}
                     />
                   </SettingRow>

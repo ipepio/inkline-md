@@ -157,4 +157,24 @@ describe("EditorWorkspace", () => {
     expect(screen.getByLabelText("Editor de Markdown")).toBeInTheDocument();
     expect(screen.getByLabelText("Vista previa")).toBeInTheDocument();
   });
+
+  // Zoom del visor: el contenedor del scroll lleva el multiplicador CSS.
+  it("aplica el zoom al contenedor del visor", () => {
+    const { container } = render(
+      <EditorWorkspace
+        doc={{ id: "d1", contents: "# hola", viewState: {} }}
+        theme="dark"
+        mode="preview"
+        onModeChange={() => {}}
+        onContents={() => {}}
+        onViewState={() => {}}
+        preview={<p>preview</p>}
+        zoom={125}
+      />,
+    );
+
+    const scroll = container.querySelector('[data-slot="preview-scroll"]');
+    expect(scroll).not.toBeNull();
+    expect(scroll?.getAttribute("data-zoom")).toBe("125");
+  });
 });

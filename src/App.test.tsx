@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
 import App from "./App";
 
 vi.mock("@/lib/workspace", () => ({
@@ -71,5 +72,37 @@ describe("App (shell Inkline)", () => {
     expect(container.querySelector("main.col-start-3")).not.toBeNull();
     // El estado vacío sigue visible: no se desmonta el área de trabajo.
     expect(screen.getByText("Ningún documento abierto")).toBeInTheDocument();
+  });
+
+  // Zoom global de texto (⌘+ / ⌘− / ⌘0): escala editor y visor a la vez.
+  it("hace zoom con ⌘+ / ⌘− y restablece con ⌘0", () => {
+    resetSettings();
+
+    render(<App />);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "=" }));
+    });
+    expect(getSettingsSnapshot().zoom).toBe(110);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "-" }));
+    });
+    expect(getSettingsSnapshot().zoom).toBe(100);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "=" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "=" }));
+    });
+    expect(getSettingsSnapshot().zoom).toBe(125);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "0" }));
+    });
+    expect(getSettingsSnapshot().zoom).toBe(100);
+
+    resetSettings();
   });
 });

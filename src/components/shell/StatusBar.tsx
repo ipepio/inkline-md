@@ -18,12 +18,14 @@ export interface StatusBarProps {
   lines: number;
   /** Último mensaje de estado del shell (guardado, exportación…). */
   status: string;
+  /** Zoom del texto en porcentaje; se muestra sólo cuando no es 100. */
+  zoom?: number;
 }
 
 /** Texto que ocupa el hueco del archivo cuando no hay documento. */
 export const NO_DOCUMENT_LABEL = "Sin documento";
 
-export function StatusBar({ fileName, line, column, words, lines, status }: StatusBarProps) {
+export function StatusBar({ fileName, line, column, words, lines, status, zoom }: StatusBarProps) {
   const hasPosition = line !== undefined && column !== undefined;
 
   return (
@@ -48,6 +50,11 @@ export function StatusBar({ fileName, line, column, words, lines, status }: Stat
       <span data-slot="stats" className="shrink-0">
         {words} palabras · {lines} líneas
       </span>
+      {zoom !== undefined && zoom !== 100 ? (
+        <span data-slot="zoom" className="shrink-0" title="Zoom de texto (⌘+ / ⌘− / ⌘0)">
+          {zoom}%
+        </span>
+      ) : null}
       <span className="flex shrink-0 items-center gap-1.5">
         <span aria-hidden className="text-primary">
           ●

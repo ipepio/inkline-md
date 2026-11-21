@@ -47,6 +47,8 @@ export interface Settings {
   spellcheck: boolean;
   /** Advertir al cerrar un documento con cambios sin guardar. */
   confirmClose: boolean;
+  /** Zoom del texto del documento (editor y visor), en porcentaje. */
+  zoom: Zoom;
   /** Tamaño de página del bloque `@page` de la exportación. */
   pageSize: PageSize;
 }
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = Object.freeze({
   wordWrap: false,
   spellcheck: false,
   confirmClose: true,
+  zoom: 100,
   pageSize: "A4",
 });
 
@@ -82,6 +85,31 @@ export const TAB_WIDTHS: readonly TabWidth[] = [2, 4];
 
 /** Tamaños de página del bloque `@page`. */
 export const PAGE_SIZES: readonly PageSize[] = ["A4", "letter"];
+
+/** Niveles de zoom del texto del documento (editor y visor), en %. */
+export const ZOOM_LEVELS = [75, 90, 100, 110, 125, 150, 175, 200] as const;
+
+/** Porcentaje de escala del cuerpo del documento. */
+export type Zoom = (typeof ZOOM_LEVELS)[number];
+
+export function isZoom(value: unknown): value is Zoom {
+  return typeof value === "number" && ZOOM_LEVELS.some((zoom) => zoom === value);
+}
+
+/**
+ * Nivel vecino en la lista de niveles; en los extremos se queda. Un valor que
+ * no esté en la lista vuelve al 100 (nunca debería verse por el validador).
+ */
+export function zoomStep(current: number, direction: 1 | -1): Zoom {
+  const index = ZOOM_LEVELS.findIndex((zoom) => zoom === current);
+  if (index === -1) return 100;
+  return ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, Math.max(0, index + direction))];
+}
+
+/** Tamaño del editor efectivo: la base escalada por el zoom (un decimal). */
+export function zoomedEditorFontSize(base: number, zoom: number): number {
+  return Math.round((base * zoom) / 10) / 10;
+}
 
 export function isThemeMode(value: unknown): value is ThemeMode {
   return value === "system" || value === "dark" || value === "light";
@@ -122,6 +150,7 @@ const SETTINGS_KEYS = [
   "wordWrap",
   "spellcheck",
   "confirmClose",
+  "zoom",
   "pageSize",
 ] as const satisfies readonly (keyof Settings)[];
 
@@ -135,6 +164,7 @@ const VALIDATORS: { [K in keyof Settings]: (value: unknown) => value is Settings
   wordWrap: isBoolean,
   spellcheck: isBoolean,
   confirmClose: isBoolean,
+  zoom: isZoom,
   pageSize: isPageSize,
 };
 

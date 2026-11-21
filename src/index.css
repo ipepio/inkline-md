@@ -447,3 +447,14 @@
   background: var(--border);
   border-radius: 6px;
 }
+
+/* Zoom del visor: niveles discretos de ZOOM_LEVELS (lib/settings). El
+   atributo permite probar el contrato en jsdom, que no renderiza `zoom`
+   inline; en WKWebView la regla CSS aplica la escala igual. */
+[data-zoom="75"] { zoom: 0.75; }
+[data-zoom="90"] { zoom: 0.9; }
+[data-zoom="110"] { zoom: 1.1; }
+[data-zoom="125"] { zoom: 1.25; }
+[data-zoom="150"] { zoom: 1.5; }
+[data-zoom="175"] { zoom: 1.75; }
+[data-zoom="200"] { zoom: 2; }

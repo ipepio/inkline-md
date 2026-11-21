@@ -51,7 +51,13 @@ import {
   saveTextFile,
   saveTextFileAs,
 } from "@/lib/files";
-import { useSettings, updateSettings } from "@/lib/settings";
+import {
+  getSettingsSnapshot,
+  updateSettings,
+  useSettings,
+  zoomStep,
+  zoomedEditorFontSize,
+} from "@/lib/settings";
 import { documentStats } from "@/lib/text";
 import { exportStandaloneHtml } from "@/lib/export/html";
 import { htmlExportFileName } from "@/lib/export/names";
@@ -240,6 +246,19 @@ export default function App() {
     }
   }, [active, theme, settings.pageSize]);
 
+  // Zoom global de texto (⌘+ / ⌘− / ⌘0): editor y visor escalan juntos. Se lee
+  // del almacén dentro del manejador para que el atajo no dependa del render
+  // en el que se disparó.
+  const zoomIn = useCallback(() => {
+    updateSettings({ zoom: zoomStep(getSettingsSnapshot().zoom, 1) });
+  }, []);
+  const zoomOut = useCallback(() => {
+    updateSettings({ zoom: zoomStep(getSettingsSnapshot().zoom, -1) });
+  }, []);
+  const resetZoom = useCallback(() => {
+    updateSettings({ zoom: 100 });
+  }, []);
+
   // Atajos del shell; ⌘K lo registra la propia paleta.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -269,11 +288,20 @@ export default function App() {
       } else if (key === "\\") {
         event.preventDefault();
         setSidebarOpen((open) => !open);
+      } else if (key === "=" || key === "+" || event.code === "NumpadAdd") {
+        event.preventDefault();
+        zoomIn();
+      } else if (key === "-" || event.code === "NumpadSubtract") {
+        event.preventDefault();
+        zoomOut();
+      } else if (key === "0") {
+        event.preventDefault();
+        resetZoom();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleSave, handleOpenDialog, handleNewDoc]);
+  }, [handleSave, handleOpenDialog, handleNewDoc, zoomIn, zoomOut, resetZoom]);
 
   const crumbs = useMemo(() => {
     if (!active) return null;
@@ -587,12 +615,13 @@ export default function App() {
               />
             }
             editorConfig={{
-              fontSize: settings.editorFontSize,
+              fontSize: zoomedEditorFontSize(settings.editorFontSize, settings.zoom),
               tabWidth: settings.tabWidth,
               lineNumbers: settings.lineNumbers,
               wordWrap: settings.wordWrap,
               spellcheck: settings.spellcheck,
             }}
+            zoom={settings.zoom}
             splitLayout={readSplitLayout(active.viewState)}
             onSplitLayoutChange={(layout) =>
               setViewState(active.id, { ...active.viewState, splitLayout: layout })
@@ -620,6 +649,7 @@ export default function App() {
           column={cursorState?.column}
           words={stats.words}
           lines={stats.lines}
+          zoom={settings.zoom}
           status={status}
         />
       </main>
@@ -632,6 +662,9 @@ export default function App() {
         onOpenDialog={() => void handleOpenDialog()}
         onNewDoc={handleNewDoc}
         onToggleTheme={toggleTheme}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onZoomReset={resetZoom}
       />
 
       <ConfirmCloseDialog

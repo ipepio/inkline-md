@@ -42,6 +42,8 @@ export interface EditorWorkspaceProps {
   splitLayout?: { editor: number; preview: number };
   /** Avisa del nuevo reparto cuando se arrastra el divisor. */
   onSplitLayoutChange?: (layout: { editor: number; preview: number }) => void;
+  /** Zoom del visor/vista previa en porcentaje (100 = sin escala). */
+  zoom?: number;
 }
 
 export interface EditorWorkspaceHandle {
@@ -93,6 +95,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
       editorConfig,
       splitLayout,
       onSplitLayoutChange,
+      zoom,
     },
     ref,
   ) {
@@ -163,7 +166,13 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
           GFM + Mermaid
         </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-20">{preview}</div>
+      <div
+        data-slot="preview-scroll"
+        data-zoom={zoom !== undefined && zoom !== 100 ? String(zoom) : undefined}
+        className="min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-20"
+      >
+        {preview}
+      </div>
     </section>
   ) : null;
 

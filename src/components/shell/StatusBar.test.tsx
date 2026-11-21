@@ -37,4 +37,21 @@ describe("StatusBar", () => {
 
     expect(screen.getByText("Sin documento")).toBeInTheDocument();
   });
+
+  it("muestra el zoom cuando no está al 100%", () => {
+    const { container } = render(
+      <StatusBar fileName="zoom.md" words={1} lines={1} status="" zoom={130} />,
+    );
+
+    expect(screen.getByText("130%")).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="zoom"]')).not.toBeNull();
+  });
+
+  it("no muestra el zoom al 100%", () => {
+    const { container } = render(
+      <StatusBar fileName="zoom.md" words={1} lines={1} status="" zoom={100} />,
+    );
+
+    expect(container.querySelector('[data-slot="zoom"]')).toBeNull();
+  });
 });

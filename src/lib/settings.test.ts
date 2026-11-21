@@ -6,6 +6,8 @@ import {
   resetSettings,
   subscribeSettings,
   updateSettings,
+  zoomStep,
+  zoomedEditorFontSize,
   type Settings,
 } from "./settings";
 
@@ -58,6 +60,7 @@ describe("settings", () => {
       wordWrap: false,
       spellcheck: false,
       confirmClose: true,
+      zoom: 100,
       pageSize: "A4",
     });
   });
@@ -85,7 +88,7 @@ describe("settings", () => {
   });
 
   it("valida cada campo y conserva el último valor válido", () => {
-    updateSettings({ editorFontSize: 16, tabWidth: 4 });
+    updateSettings({ editorFontSize: 16, tabWidth: 4, zoom: 110 });
 
     updateSettings({
       themeMode: "violeta",
@@ -97,6 +100,7 @@ describe("settings", () => {
       wordWrap: "no",
       spellcheck: 1,
       confirmClose: null,
+      zoom: 80,
       pageSize: "A5",
     } as unknown as Partial<Settings>);
 
@@ -104,6 +108,7 @@ describe("settings", () => {
       ...DEFAULT_SETTINGS,
       editorFontSize: 16,
       tabWidth: 4,
+      zoom: 110,
     });
   });
 
@@ -118,6 +123,7 @@ describe("settings", () => {
       wordWrap: true,
       spellcheck: true,
       confirmClose: false,
+      zoom: 110,
       pageSize: "letter",
     });
 
@@ -131,6 +137,7 @@ describe("settings", () => {
       wordWrap: true,
       spellcheck: true,
       confirmClose: false,
+      zoom: 110,
       pageSize: "letter",
     });
   });
@@ -193,5 +200,31 @@ describe("settings", () => {
 
     expect(getSettingsSnapshot()).toEqual(DEFAULT_SETTINGS);
     expect(storage.getItem(SETTINGS_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe("zoom de texto", () => {
+  it("sólo acepta niveles válidos y descarta el resto", () => {
+    updateSettings({ zoom: 125 });
+    expect(getSettingsSnapshot().zoom).toBe(125);
+
+    updateSettings({ zoom: 80 } as unknown as Partial<Settings>);
+    expect(getSettingsSnapshot().zoom).toBe(125);
+
+    updateSettings({ zoom: 201 } as unknown as Partial<Settings>);
+    expect(getSettingsSnapshot().zoom).toBe(125);
+  });
+
+  it("zoomStep recorre los niveles y se detiene en los extremos", () => {
+    expect(zoomStep(100, 1)).toBe(110);
+    expect(zoomStep(125, 1)).toBe(150);
+    expect(zoomStep(75, -1)).toBe(75);
+    expect(zoomStep(200, 1)).toBe(200);
+  });
+
+  it("el tamaño efectivo del editor escala con el zoom", () => {
+    expect(zoomedEditorFontSize(12, 100)).toBe(12);
+    expect(zoomedEditorFontSize(12, 150)).toBe(18);
+    expect(zoomedEditorFontSize(15, 175)).toBe(26.3);
   });
 });
