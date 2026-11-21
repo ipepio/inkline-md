@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { exportStandaloneHtml, type ExportTheme } from "@/lib/export/html";
+import type { PageSize } from "@/lib/settings";
 import { htmlExportFileName, markdownExportFileName } from "@/lib/export/names";
 import {
   HTML_EXPORT_FILTERS,
@@ -45,8 +46,7 @@ import {
   writeTemporaryExport,
 } from "@/lib/export/operations";
 
-/** Mensajes de estado del menú; el shell los muestra tal cual en su barra. */
-export const EXPORT_STATUS = {
+/** Mensajes de estado del menú; el shell los muestra tal cual en su barra. */export const EXPORT_STATUS = {
   noDocument: "No hay ningún documento que exportar",
   cancelled: "Exportación cancelada",
   saved: (path: string) => `Exportado: ${path}`,
@@ -57,6 +57,14 @@ export const EXPORT_STATUS = {
   failed: (error: unknown) =>
     `Error al exportar: ${error instanceof Error ? error.message : String(error)}`,
 } as const;
+
+/**
+ * Nota de impresión compartida con la ventana de preferencias (T6): en macOS
+ * WKWebView no abre el diálogo de impresión de forma fiable, así que el PDF se
+ * obtiene desde el navegador del sistema.
+ */
+export const PRINT_IN_BROWSER_NOTE =
+  "La impresión abre el documento en el navegador del sistema: elige ahí Imprimir o Guardar como PDF.";
 
 export interface ExportMenuHandle {
   /** Exporta el HTML autónomo; lo invoca el atajo ⌘E del shell. */
@@ -69,6 +77,8 @@ export interface ExportMenuProps {
   /** Título del documento (nombre de archivo o etiqueta de pestaña). */
   docTitle: string;
   theme: ExportTheme;
+  /** Tamaño de página del bloque `@page` de la exportación (T6). */
+  pageSize?: PageSize;
   onStatus: (message: string) => void;
 }
 
@@ -111,7 +121,7 @@ function ExportItem({
 }
 
 export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function ExportMenu(
-  { markdown, docTitle, theme, onStatus },
+  { markdown, docTitle, theme, pageSize = "A4", onStatus },
   ref,
 ) {
   const downloadMarkdown = useCallback(async (): Promise<void> => {
@@ -137,13 +147,13 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
       return;
     }
     try {
-      const html = await exportStandaloneHtml(markdown, { theme, title: docTitle });
+      const html = await exportStandaloneHtml(markdown, { theme, title: docTitle, pageSize });
       const saved = await saveDocumentCopy(html, htmlExportFileName(docTitle), HTML_EXPORT_FILTERS);
       onStatus(saved === null ? EXPORT_STATUS.cancelled : EXPORT_STATUS.saved(saved));
     } catch (error) {
       onStatus(EXPORT_STATUS.failed(error));
     }
-  }, [docTitle, markdown, onStatus, theme]);
+  }, [docTitle, markdown, onStatus, pageSize, theme]);
 
   const printDocument = useCallback(async (): Promise<void> => {
     if (markdown === null) {
@@ -151,7 +161,7 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
       return;
     }
     try {
-      const html = await exportStandaloneHtml(markdown, { theme, title: docTitle });
+      const html = await exportStandaloneHtml(markdown, { theme, title: docTitle, pageSize });
       const target = await writeTemporaryExport(html, htmlExportFileName(docTitle));
       const opened = await openInBrowser(target);
       onStatus(
@@ -162,7 +172,7 @@ export const ExportMenu = forwardRef<ExportMenuHandle, ExportMenuProps>(function
     } catch (error) {
       onStatus(EXPORT_STATUS.failed(error));
     }
-  }, [docTitle, markdown, onStatus, theme]);
+  }, [docTitle, markdown, onStatus, pageSize, theme]);
 
   useImperativeHandle(ref, () => ({ exportHtml }), [exportHtml]);
 

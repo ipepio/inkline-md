@@ -16,7 +16,12 @@ import { forwardRef, useImperativeHandle, useRef, type ReactNode } from "react";
 import { cn } from "cn";
 import { FormatToolbar } from "@/components/editor/FormatToolbar";
 import { ModeSwitch } from "@/components/editor/ModeSwitch";
-import { EditorPane, type EditorDocument, type EditorPaneHandle } from "@/components/editor/EditorPane";
+import {
+  EditorPane,
+  type EditorConfig,
+  type EditorDocument,
+  type EditorPaneHandle,
+} from "@/components/editor/EditorPane";
 import type { FormatKind } from "@/lib/editor/format";
 import type { WorkspaceMode } from "@/lib/editor/mode";
 import type { Theme } from "@/hooks/useTheme";
@@ -30,6 +35,8 @@ export interface EditorWorkspaceProps {
   onViewState: (id: string, viewState: Record<string, unknown>) => void;
   /** Nodo de lectura que el shell aporta (p. ej. `<MarkdownView />`). */
   preview?: ReactNode;
+  /** Preferencias de escritura del panel; ausentes, las de por defecto (T3). */
+  editorConfig?: EditorConfig;
 }
 
 export interface EditorWorkspaceHandle {
@@ -46,12 +53,19 @@ const PANES: Record<WorkspaceMode, string> = {
 const PANE_HEAD =
   "flex h-[53px] min-h-[53px] items-center justify-between border-b border-border/60 px-6 text-[10px] font-extrabold tracking-[1.35px] text-muted-foreground";
 
+/** Bytes UTF-8 de un único carácter, a partir de su punto de código. */
+function byteLength(code: number): number {
+  if (code < 0x80) return 1;
+  if (code < 0x800) return 2;
+  if (code < 0x10000) return 3;
+  return 4;
+}
+
 /** Tamaño en bytes reales (UTF-8), sin depender de `TextEncoder`. */
 export function utf8Bytes(text: string): number {
   let bytes = 0;
   for (const character of text) {
-    const code = character.codePointAt(0) ?? 0;
-    bytes += code < 0x80 ? 1 : code < 0x800 ? 2 : code < 0x10000 ? 3 : 4;
+    bytes += byteLength(character.codePointAt(0) ?? 0);
   }
   return bytes;
 }
@@ -63,7 +77,7 @@ function sizeLabel(contents: string): string {
 
 export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspaceProps>(
   function EditorWorkspace(
-    { doc, theme, mode, onModeChange, onContents, onViewState, preview },
+    { doc, theme, mode, onModeChange, onContents, onViewState, preview, editorConfig },
     ref,
   ) {
     const paneRef = useRef<EditorPaneHandle>(null);
@@ -123,6 +137,7 @@ export const EditorWorkspace = forwardRef<EditorWorkspaceHandle, EditorWorkspace
                   theme={theme}
                   onContents={onContents}
                   onViewState={onViewState}
+                  editorConfig={editorConfig}
                 />
               </div>
             </section>

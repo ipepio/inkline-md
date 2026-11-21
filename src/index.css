@@ -408,3 +408,20 @@
     background: transparent !important;
   }
 }
+
+/* ============================================================================
+ * Inkline serif preview — preferencia «Tipografía de lectura: Serif editorial»
+ * (ODD T6 / S6)
+ *
+ * Réplica de `.layout.serif-preview .readable` del mockup
+ * (design/inkline/inkline-markdown-studio.html): Georgia/Cambria a 14 px sólo
+ * dentro del contenedor de lectura de la app cuando la preferencia lo pide. La
+ * clase añadida (`inkline-serif`) vive junto a `inkline-readable`, así que la
+ * especificidad de dos clases gana a la tipografía base sin tocar sus bloques.
+ * ========================================================================== */
+@layer components {
+  .inkline-readable.inkline-serif {
+    font-family: Georgia, Cambria, "Times New Roman", serif;
+    font-size: 14px;
+  }
+}

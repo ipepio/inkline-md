@@ -24,14 +24,16 @@ import {
 } from "react";
 import CodeMirror, {
   EditorState,
+  EditorView,
   type BasicSetupOptions,
-  type EditorView,
+  type Extension,
   type ViewUpdate,
 } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { applyFormat as formatSelection, minimalChange, type FormatKind } from "@/lib/editor/format";
 import { editorTheme } from "@/lib/editor/theme";
+import { cursorPosition } from "@/lib/text";
 import type { Theme } from "@/hooks/useTheme";
 
 export interface EditorDocument {
@@ -40,11 +42,30 @@ export interface EditorDocument {
   viewState?: Record<string, unknown>;
 }
 
+/**
+ * Preferencias de escritura que llegan desde la ventana de preferencias (T6).
+ * Sin este objeto el panel se comporta exactamente como en T3.
+ */
+export interface EditorConfig {
+  /** Escala del texto fuente, en píxeles (12 = valor histórico del mockup). */
+  fontSize: number;
+  /** Espacios por tabulador. */
+  tabWidth: number;
+  /** Gutter de numeración. */
+  lineNumbers: boolean;
+  /** Ajuste de línea para textos largos. */
+  wordWrap: boolean;
+  /** Corrector ortográfico del sistema. */
+  spellcheck: boolean;
+}
+
 export interface EditorPaneProps {
   doc: EditorDocument;
   theme: Theme;
   onContents: (id: string, contents: string) => void;
   onViewState: (id: string, viewState: Record<string, unknown>) => void;
+  /** Preferencias de escritura; ausentes, se usan los valores de T3. */
+  editorConfig?: EditorConfig;
 }
 
 export interface EditorPaneHandle {
@@ -70,6 +91,25 @@ const BASIC_SETUP: BasicSetupOptions = {
   indentOnInput: true,
 };
 
+/**
+ * Métrica tipográfica de la preferencia «Tamaño de letra».
+ *
+ * Vive aquí, como extensión de tema, porque la paleta de CodeMirror
+ * (`lib/editor/theme.ts`) hornea 12 px de alto de línea; 12 px + 13 = 25 px es
+ * exactamente el alto histórico (`.editor{font:12px/25px}` del mockup), así que
+ * el valor por defecto no cambia ni un píxel.
+ */
+function fontSizeExtension(fontSize: number): Extension {
+  const size = `${fontSize}px`;
+  const lineHeight = `${fontSize + 13}px`;
+  return EditorView.theme({
+    "&": { fontSize: size },
+    ".cm-scroller": { fontSize: size, lineHeight },
+    ".cm-gutters": { fontSize: size, lineHeight },
+    ".cm-content": { fontSize: size },
+  });
+}
+
 /** Cursor y desplazamiento guardados, validados contra lo que haya. */
 function readViewState(viewState: Record<string, unknown> | undefined): {
   cursor?: number;
@@ -87,16 +127,26 @@ function readViewState(viewState: Record<string, unknown> | undefined): {
 }
 
 export const EditorPane = forwardRef<EditorPaneHandle, EditorPaneProps>(function EditorPane(
-  { doc, theme, onContents, onViewState },
+  { doc, theme, onContents, onViewState, editorConfig },
   ref,
 ) {
   const viewRef = useRef<EditorView | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Últimos props sin re-suscribir el throttle ni el restaurador.
-  const latestRef = useRef({ id: doc.id, viewState: doc.viewState, onViewState });
+  const latestRef = useRef({
+    id: doc.id,
+    viewState: doc.viewState,
+    onViewState,
+    withPosition: editorConfig !== undefined,
+  });
   useEffect(() => {
-    latestRef.current = { id: doc.id, viewState: doc.viewState, onViewState };
+    latestRef.current = {
+      id: doc.id,
+      viewState: doc.viewState,
+      onViewState,
+      withPosition: editorConfig !== undefined,
+    };
   });
 
   const schedulePersist = useCallback(() => {
@@ -105,11 +155,18 @@ export const EditorPane = forwardRef<EditorPaneHandle, EditorPaneProps>(function
       timerRef.current = null;
       const view = viewRef.current;
       if (!view) return;
-      const { id, onViewState: persist } = latestRef.current;
-      persist(id, {
-        cursor: view.state.selection.main.head,
-        scrollTop: view.scrollDOM.scrollTop,
-      });
+      const { id, onViewState: persist, withPosition } = latestRef.current;
+      const cursor = view.state.selection.main.head;
+      const scrollTop = view.scrollDOM.scrollTop;
+      // La app monta el panel con preferencias (T6) y entonces el `viewState`
+      // lleva también línea y columna para la barra de estado; sin ellas se
+      // conserva el payload histórico `{cursor, scrollTop}` de T3.
+      persist(
+        id,
+        withPosition
+          ? { cursor, scrollTop, ...cursorPosition(view.state.doc.toString(), cursor) }
+          : { cursor, scrollTop },
+      );
     }, PERSIST_DELAY_MS);
   }, []);
 
@@ -156,9 +213,20 @@ export const EditorPane = forwardRef<EditorPaneHandle, EditorPaneProps>(function
     [handleScroll],
   );
 
-  const extensions = useMemo(
-    () => [markdown({ codeLanguages: languages }), EditorState.tabSize.of(2), editorTheme(theme)],
-    [theme],
+  const extensions = useMemo(() => {
+    const list: Extension[] = [
+      markdown({ codeLanguages: languages }),
+      EditorState.tabSize.of(editorConfig?.tabWidth ?? 2),
+      editorTheme(theme),
+    ];
+    if (editorConfig) list.push(fontSizeExtension(editorConfig.fontSize));
+    if (editorConfig?.wordWrap) list.push(EditorView.lineWrapping);
+    return list;
+  }, [editorConfig, theme]);
+
+  const basicSetup = useMemo<BasicSetupOptions>(
+    () => ({ ...BASIC_SETUP, lineNumbers: editorConfig?.lineNumbers ?? true }),
+    [editorConfig?.lineNumbers],
   );
 
   useImperativeHandle(
@@ -192,9 +260,9 @@ export const EditorPane = forwardRef<EditorPaneHandle, EditorPaneProps>(function
         height="100%"
         theme="none"
         extensions={extensions}
-        basicSetup={BASIC_SETUP}
+        basicSetup={basicSetup}
         indentWithTab
-        spellCheck={false}
+        spellCheck={editorConfig?.spellcheck ?? false}
         aria-label="Editor de Markdown"
         onChange={(value) => onContents(doc.id, value)}
         onUpdate={handleUpdate}
