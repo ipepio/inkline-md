@@ -61,10 +61,29 @@ export function editorTheme(theme: Theme): Extension {
         lineHeight: "25px",
         overflow: "auto",
         minHeight: "0",
+        // El aire vertical va aquí y NO en `.cm-content`/`.cm-gutters`: así los
+        // números de línea y el texto comparten la misma caja y se alinean
+        // siempre (antes la gutter arrastraba un desplazamiento de una línea).
+        paddingTop: "24px",
+        paddingBottom: "40px",
+        // Scrollbars propias: en WKWebView las del sistema son overlay y se
+        // ocultan; con estilo explícito la barra horizontal del editor queda
+        // siempre visible.
+        scrollbarWidth: "thin",
+        scrollbarColor: "var(--border) transparent",
+      },
+      ".cm-scroller::-webkit-scrollbar": { width: "10px", height: "10px" },
+      ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
+      ".cm-scroller::-webkit-scrollbar-thumb": {
+        backgroundColor: "var(--border)",
+        borderRadius: "6px",
+      },
+      ".cm-scroller::-webkit-scrollbar-thumb:hover": {
+        backgroundColor: "var(--muted-foreground)",
       },
       ".cm-content": {
         fontFamily: MONO,
-        padding: "24px 20px 60px 0",
+        padding: "0 20px 0 0",
         caretColor: palette.caret,
       },
       ".cm-line": { padding: "0" },
@@ -79,12 +98,12 @@ export function editorTheme(theme: Theme): Extension {
         fontFamily: MONO,
         fontSize: "12px",
         lineHeight: "25px",
-        minWidth: "53px",
-        padding: "24px 0 40px 0",
+        minWidth: "38px",
+        padding: "0",
         opacity: "1",
         userSelect: "none",
       },
-      ".cm-lineNumbers .cm-gutterElement": { padding: "0 14px 0 0" },
+      ".cm-lineNumbers .cm-gutterElement": { padding: "0 10px 0 6px" },
       ".cm-activeLine": { backgroundColor: "transparent" },
       ".cm-activeLineGutter": { backgroundColor: "transparent" },
       ".cm-cursor, .cm-dropCursor": {
