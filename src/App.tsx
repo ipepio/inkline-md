@@ -611,6 +611,7 @@ export default function App() {
               <MarkdownView
                 markdown={active.contents}
                 theme={theme}
+                fontSize={settings.previewFontSize}
                 className={settings.previewFont === "serif" ? "inkline-serif" : undefined}
               />
             }

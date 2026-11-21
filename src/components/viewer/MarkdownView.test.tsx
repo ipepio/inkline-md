@@ -3,11 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MarkdownView } from "./MarkdownView";
 
 const shiki = vi.hoisted(() => {
-  const escape = (value: string) =>
+  const escapeHtml = (value: string) =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const codeToHtml = vi.fn(
     async (code: string, options: { lang: string; theme: string }) =>
-      `<pre class="shiki ${options.theme}"><code class="language-${options.lang}">${escape(code)}</code></pre>`,
+      `<pre class="shiki ${options.theme}"><code class="language-${options.lang}">${escapeHtml(code)}</code></pre>`,
   );
   const loadLanguage = vi.fn(async () => {});
   const getLoadedLanguages = vi.fn((): string[] => []);
@@ -73,5 +73,19 @@ describe("MarkdownView", () => {
     const { container } = render(<MarkdownView markdown="" />);
     expect(container.querySelector(".inkline-readable")).toBeInTheDocument();
     expect(container.querySelector(".inkline-readable")?.textContent).toBe("");
+  });
+
+  it("aplica el tamaño de lectura recibido como estilo inline", () => {
+    const { container } = render(<MarkdownView markdown="# h" fontSize={15} />);
+
+    const article = container.querySelector(".inkline-readable") as HTMLElement;
+    expect(article.style.fontSize).toBe("15px");
+  });
+
+  it("sin tamaño explícito no escribe estilo inline", () => {
+    const { container } = render(<MarkdownView markdown="# h" />);
+
+    const article = container.querySelector(".inkline-readable") as HTMLElement;
+    expect(article.getAttribute("style")).toBeNull();
   });
 });

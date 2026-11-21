@@ -148,20 +148,20 @@
   }
 
   .inkline-readable h1 {
-    font-size: 34px;
+    font-size: 2.6154em;
     letter-spacing: -1.3px;
     margin: 0 0 16px;
   }
 
   .inkline-readable h2 {
-    font-size: 21px;
+    font-size: 1.6154em;
     margin: 34px 0 13px;
     padding-block-end: 11px;
     border-block-end: 1px solid var(--border);
   }
 
   .inkline-readable h3 {
-    font-size: 17px;
+    font-size: 1.3077em;
     margin: 26px 0 9px;
   }
 
@@ -198,7 +198,7 @@
   .inkline-readable table {
     border-collapse: collapse;
     inline-size: 100%;
-    font-size: 12px;
+    font-size: 0.9231em;
   }
 
   .inkline-readable :is(td, th) {
@@ -239,7 +239,7 @@
 
   /* Código inline: nunca el de un bloque. */
   .inkline-readable :not(pre) > code {
-    font: 11px/1.5 var(--font-mono);
+    font: 0.8462em/1.5 var(--font-mono);
     background: var(--ink-code);
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -258,7 +258,7 @@
     border-radius: 9px;
     padding: 18px 20px;
     overflow: auto;
-    font: 11px/1.7 var(--font-mono);
+    font: 0.8462em/1.7 var(--font-mono);
     margin: 0;
   }
 
@@ -268,7 +268,7 @@
 
   /* Badge de lenguaje: pestaña pegada al borde superior del bloque. */
   .inkline-readable .inkline-lang {
-    font: 10px var(--font-mono);
+    font: 0.7692em var(--font-mono);
     color: var(--muted-foreground);
     text-transform: uppercase;
     letter-spacing: 0.6px;
@@ -306,11 +306,11 @@
     display: block;
     text-align: center;
     color: var(--ink-faint);
-    font-size: 11px;
+    font-size: 0.8462em;
   }
 
   .inkline-readable .inkline-diagram__caption {
-    font-size: 10px;
+    font-size: 0.7692em;
     text-align: center;
     color: var(--muted-foreground);
     margin-block-start: 10px;
@@ -323,7 +323,7 @@
     border-radius: 9px;
     padding: 18px 20px;
     overflow: auto;
-    font: 11px/1.7 var(--font-mono);
+    font: 0.8462em/1.7 var(--font-mono);
     margin-block: 16px 0;
   }
 
@@ -424,7 +424,7 @@
  * (ODD T6 / S6)
  *
  * Réplica de `.layout.serif-preview .readable` del mockup
- * (design/inkline/inkline-markdown-studio.html): Georgia/Cambria a 14 px sólo
+ * (design/inkline/inkline-markdown-studio.html): Georgia/Cambria sólo
  * dentro del contenedor de lectura de la app cuando la preferencia lo pide. La
  * clase añadida (`inkline-serif`) vive junto a `inkline-readable`, así que la
  * especificidad de dos clases gana a la tipografía base sin tocar sus bloques.
@@ -432,7 +432,6 @@
 @layer components {
   .inkline-readable.inkline-serif {
     font-family: Georgia, Cambria, "Times New Roman", serif;
-    font-size: 14px;
   }
 }
 

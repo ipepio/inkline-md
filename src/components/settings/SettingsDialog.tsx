@@ -44,12 +44,14 @@ import { Switch } from "@/components/ui/switch";
 import { PRINT_IN_BROWSER_NOTE } from "@/components/export/ExportMenu";
 import {
   EDITOR_FONT_SIZES,
+  PREVIEW_FONT_SIZES,
   TAB_WIDTHS,
   ZOOM_LEVELS,
   isDefaultView,
   isEditorFontSize,
   isPageSize,
   isPreviewFont,
+  isPreviewFontSize,
   isTabWidth,
   isThemeMode,
   isZoom,
@@ -304,6 +306,23 @@ export function SettingsDialog({
                       ]}
                       onValueChange={(value) => {
                         if (isPreviewFont(value)) onChange({ previewFont: value });
+                      }}
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    name="Tamaño de lectura"
+                    note="Escala todo el texto de lectura, títulos incluidos."
+                  >
+                    <SettingSelect
+                      label="Tamaño de lectura"
+                      value={String(settings.previewFontSize)}
+                      options={PREVIEW_FONT_SIZES.map((size) => ({
+                        value: String(size),
+                        label: `${size} px`,
+                      }))}
+                      onValueChange={(value) => {
+                        const size = Number(value);
+                        if (isPreviewFontSize(size)) onChange({ previewFontSize: size });
                       }}
                     />
                   </SettingRow>

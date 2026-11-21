@@ -21,6 +21,8 @@ export interface MarkdownViewProps {
   markdown: string;
   /** Tema activo: decide el par de temas de Shiki y el tema de Mermaid. */
   theme?: ThemeMode;
+  /** Tamaño base del texto de lectura en píxeles; ausente, el CSS usa 13px. */
+  fontSize?: number;
   className?: string;
 }
 
@@ -36,7 +38,7 @@ function parseFragment(html: string): Node[] {
   return Array.from(parsed.body.childNodes, (node) => document.importNode(node, true));
 }
 
-export function MarkdownView({ markdown, theme = "dark", className }: MarkdownViewProps) {
+export function MarkdownView({ markdown, theme = "dark", className, fontSize }: MarkdownViewProps) {
   const containerRef = useRef<HTMLElement | null>(null);
   const syncHtml = useMemo(() => renderToHtmlSync(markdown), [markdown]);
   const [enhanced, setEnhanced] = useState<EnhancedHtml | null>(null);
@@ -75,5 +77,11 @@ export function MarkdownView({ markdown, theme = "dark", className }: MarkdownVi
     return () => controller.abort();
   }, [html, theme]);
 
-  return <article ref={containerRef} className={cn("inkline-readable", className)} />;
+return (
+    <article
+      ref={containerRef}
+      className={cn("inkline-readable", className)}
+      style={fontSize === undefined ? undefined : { fontSize: `${fontSize}px` }}
+    />
+  );
 }

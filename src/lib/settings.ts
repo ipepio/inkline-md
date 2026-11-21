@@ -23,6 +23,7 @@ import { useSyncExternalStore } from "react";
 
 export type ThemeMode = "system" | "dark" | "light";
 export type PreviewFont = "sans" | "serif";
+export type PreviewFontSize = 12 | 13 | 14 | 15 | 16;
 export type DefaultView = "editor" | "split" | "preview";
 export type EditorFontSize = 12 | 13 | 14 | 15 | 16;
 export type TabWidth = 2 | 4;
@@ -33,6 +34,8 @@ export interface Settings {
   themeMode: ThemeMode;
   /** Tipografía de la vista previa: sans del mockup o serif editorial. */
   previewFont: PreviewFont;
+  /** Tamaño base del texto de lectura (visor y vista previa), en píxeles. */
+  previewFontSize: PreviewFontSize;
   /** Vista con la que se abre un documento. */
   defaultView: DefaultView;
   /** Escala del texto fuente del editor, en píxeles. */
@@ -57,6 +60,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = Object.freeze({
   themeMode: "system",
   previewFont: "sans",
+  previewFontSize: 13,
   defaultView: "split",
   editorFontSize: 12,
   tabWidth: 2,
@@ -79,6 +83,9 @@ export const LEGACY_THEME_STORAGE_KEY = "inkline-theme";
 
 /** Tamaños de letra ofrecidos por la ventana de preferencias. */
 export const EDITOR_FONT_SIZES: readonly EditorFontSize[] = [12, 13, 14, 15, 16];
+
+/** Tamaños de lectura ofrecidos por la ventana de preferencias. */
+export const PREVIEW_FONT_SIZES: readonly PreviewFontSize[] = [12, 13, 14, 15, 16];
 
 /** Indentaciones ofrecidas por la ventana de preferencias. */
 export const TAB_WIDTHS: readonly TabWidth[] = [2, 4];
@@ -119,6 +126,10 @@ export function isPreviewFont(value: unknown): value is PreviewFont {
   return value === "sans" || value === "serif";
 }
 
+export function isPreviewFontSize(value: unknown): value is PreviewFontSize {
+  return PREVIEW_FONT_SIZES.some((size) => value === size);
+}
+
 export function isDefaultView(value: unknown): value is DefaultView {
   return value === "editor" || value === "split" || value === "preview";
 }
@@ -143,6 +154,7 @@ function isBoolean(value: unknown): value is boolean {
 const SETTINGS_KEYS = [
   "themeMode",
   "previewFont",
+  "previewFontSize",
   "defaultView",
   "editorFontSize",
   "tabWidth",
@@ -157,6 +169,7 @@ const SETTINGS_KEYS = [
 const VALIDATORS: { [K in keyof Settings]: (value: unknown) => value is Settings[K] } = {
   themeMode: isThemeMode,
   previewFont: isPreviewFont,
+  previewFontSize: isPreviewFontSize,
   defaultView: isDefaultView,
   editorFontSize: isEditorFontSize,
   tabWidth: isTabWidth,

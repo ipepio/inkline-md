@@ -53,6 +53,7 @@ describe("settings", () => {
     expect(getSettingsSnapshot()).toEqual({
       themeMode: "system",
       previewFont: "sans",
+      previewFontSize: 13,
       defaultView: "split",
       editorFontSize: 12,
       tabWidth: 2,
@@ -88,7 +89,7 @@ describe("settings", () => {
   });
 
   it("valida cada campo y conserva el último valor válido", () => {
-    updateSettings({ editorFontSize: 16, tabWidth: 4, zoom: 110 });
+    updateSettings({ editorFontSize: 16, tabWidth: 4, zoom: 110, previewFontSize: 15 });
 
     updateSettings({
       themeMode: "violeta",
@@ -101,6 +102,7 @@ describe("settings", () => {
       spellcheck: 1,
       confirmClose: null,
       zoom: 80,
+      previewFontSize: 99,
       pageSize: "A5",
     } as unknown as Partial<Settings>);
 
@@ -109,6 +111,7 @@ describe("settings", () => {
       editorFontSize: 16,
       tabWidth: 4,
       zoom: 110,
+      previewFontSize: 15,
     });
   });
 
@@ -116,6 +119,7 @@ describe("settings", () => {
     updateSettings({
       themeMode: "light",
       previewFont: "serif",
+      previewFontSize: 15,
       defaultView: "preview",
       editorFontSize: 15,
       tabWidth: 2,
@@ -130,6 +134,7 @@ describe("settings", () => {
     expect(getSettingsSnapshot()).toEqual({
       themeMode: "light",
       previewFont: "serif",
+      previewFontSize: 15,
       defaultView: "preview",
       editorFontSize: 15,
       tabWidth: 2,
