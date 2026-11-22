@@ -1,5 +1,5 @@
 /**
- * Doble de `@uiw/react-codemirror` para las pruebas de T3.
+ * Doble de `@uiw/react-codemirror` para las pruebas de T3 y T6.
  *
  * jsdom no maqueta el layout del que CodeMirror depende (medidas, selección,
  * `scrollTop` real), así que las pruebas del contenedor verifican el contrato
@@ -51,6 +51,13 @@ export interface FakeView {
   setSelection: (from: number, to?: number) => void;
   /** Emula que la persona escribe y dispara `onChange` como el editor real. */
   type: (text: string) => void;
+  /**
+   * Aplica un `value` que llega de fuera SIN disparar `onChange`, igual que
+   * `@uiw/react-codemirror` cuando cambia la prop `value` (si reemitiese el
+   * cambio, el shell escribiría en el almacén lo que acaba de leer). Es lo que
+   * hace converger dos vistas del MISMO documento (S7).
+   */
+  applyValue: (next: string) => void;
   /** Emula el desplazamiento del panel para probar la persistencia. */
   scrollTo: (top: number) => void;
   dispatches: FakeTransaction[];
@@ -74,6 +81,17 @@ export function lastView(): FakeView {
 
 export function resetViews(): void {
   createdViews.length = 0;
+}
+
+/**
+ * Vistas por nodo montado. Permite localizar el editor de una región concreta
+ * de la interfaz (un grupo de edición) sin depender del orden de montaje.
+ */
+const nodeViews = new WeakMap<Element, FakeView>();
+
+/** Vista simulada montada en ese nodo, si la hay. */
+export function viewFor(node: Element | null): FakeView | null {
+  return node ? nodeViews.get(node) ?? null : null;
 }
 
 /**
@@ -115,6 +133,15 @@ function createView(initialText: string, props: MockCodeMirrorProps): FakeView {
       text = next;
       props.onChange?.(next);
     },
+    applyValue: (next) => {
+      if (next === text) return;
+      text = next;
+      // Como CodeMirror al reemplazar el documento: la selección se acota al
+      // texto nuevo en vez de quedar fuera de rango.
+      const end = text.length;
+      from = Math.min(from, end);
+      to = Math.min(to, end);
+    },
     scrollTo: (top) => {
       view.scrollDOM.scrollTop = top;
       for (const listener of scrollListeners) listener();
@@ -154,11 +181,27 @@ const MockCodeMirror = forwardRef<unknown, MockCodeMirrorProps>(function MockCod
 
   useImperativeHandle(ref, () => ({ view, state: view.state, editor: null }), [view]);
 
+  // `value` controlado: un cambio del prop `value` se aplica al documento
+  // montado, como en el envoltorio real. Si el cambio no viene de quien teclea
+  // aquí NO dispara `onChange` (si lo hiciera, el shell escribiría en el almacén
+  // lo que acaba de leer). Es el último tramo del estado compartido de T6/S7:
+  // almacén único → prop `value` de cada grupo → texto de cada editor.
+  useEffect(() => {
+    view.applyValue(props.value ?? "");
+  }, [props.value, view]);
+
   useEffect(() => {
     props.onCreateEditor?.(view, view.state);
   }, [props, view]);
 
-  return <div data-testid="codemirror-mock" />;
+  return (
+    <div
+      data-testid="codemirror-mock"
+      ref={(node) => {
+        if (node) nodeViews.set(node, view);
+      }}
+    />
+  );
 });
 
 export default MockCodeMirror;

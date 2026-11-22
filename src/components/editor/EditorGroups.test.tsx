@@ -16,6 +16,7 @@ import {
 } from "./EditorGroups";
 import type { Group } from "@/hooks/editorGroups";
 import type { OpenDocument } from "@/lib/documents";
+import { createdViews, resetViews } from "./__fixtures__/codemirror-mock";
 
 vi.mock("@uiw/react-codemirror", async () => await import("./__fixtures__/codemirror-mock"));
 
@@ -186,5 +187,44 @@ describe("EditorGroups", () => {
     expect(editorRefs.current["1"]).not.toBeNull();
     expect(editorRefs.current["2"]).not.toBeNull();
     expect(editorRefs.current["2"]?.applyFormat).toBeTypeOf("function");
+  });
+
+  // S7: el mismo documento puede vivir en los dos grupos; lo que se escribe en
+  // uno aparece en el otro porque ambos renderizan el MISMO documento del
+  // almacén (`onContents` lo actualiza) y el `value` se aplica también al
+  // editor montado del otro grupo.
+  it("sincroniza en vivo el mismo documento abierto en dos grupos", () => {
+    resetViews();
+    const shared: OpenDocument = { ...DOC_A, contents: "# compartido" };
+    const grupos: Group[] = [
+      { id: "1", docIds: [shared.id], activeDocId: shared.id, mode: "editor" },
+      { id: "2", docIds: [shared.id], activeDocId: shared.id, mode: "editor" },
+    ];
+    const onContents = vi.fn();
+    const { rerender, props } = renderGroups({
+      groups: grupos,
+      docs: [shared],
+      onContents,
+    });
+
+    const [vistaUno, vistaDos] = createdViews;
+    expect(vistaUno.text()).toBe("# compartido");
+    expect(vistaDos.text()).toBe("# compartido");
+
+    // La persona escribe en el editor del grupo 1: el shell avisa del cambio.
+    vistaUno.type("# compartido y editado");
+    expect(onContents).toHaveBeenCalledWith(shared.id, "# compartido y editado");
+
+    // El almacén (App) actualiza el documento y ambos grupos re-renderizan el
+    // mismo contenido: el editor del grupo 2 lo recibe vía `value`.
+    const actualizado: OpenDocument = {
+      ...shared,
+      contents: "# compartido y editado",
+      dirty: true,
+    };
+    rerender(<EditorGroups {...props} docs={[actualizado]} />);
+
+    expect(vistaDos.text()).toBe("# compartido y editado");
+    expect(vistaUno.text()).toBe("# compartido y editado");
   });
 });

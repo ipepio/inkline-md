@@ -4,6 +4,8 @@ import { getDocumentsSnapshot, resetDocuments, setContents, setViewState } from 
 import { openTextFile, readTextFile } from "@/lib/files";
 import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
 import { loadWorkspaceConfig, pushRecent } from "@/lib/workspace";
+import type { FakeView } from "./components/editor/__fixtures__/codemirror-mock";
+import { viewFor } from "./components/editor/__fixtures__/codemirror-mock";
 import App from "./App";
 
 vi.mock("@/lib/workspace", () => ({
@@ -24,6 +26,11 @@ vi.mock("@/lib/files", () => ({
   saveTextFile: vi.fn().mockResolvedValue(undefined),
   saveTextFileAs: vi.fn().mockResolvedValue(null),
 }));
+
+// jsdom no maqueta el layout del que CodeMirror depende, así que el editor se
+// sustituye por el doble de `__fixtures__/codemirror-mock`: mismo contrato
+// (value controlado + onChange), y permite escribir de verdad (S7, T6).
+vi.mock("@uiw/react-codemirror", async () => await import("./components/editor/__fixtures__/codemirror-mock"));
 
 // jsdom no trae ResizeObserver ni scrollIntoView y los diálogos de `ui/` los
 // usan para medir su contenido. Stubs mínimos, sólo en este test.
@@ -46,6 +53,18 @@ function tabs(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('[data-slot="tab"]')).map(
     (tab) => tab.querySelector("button")?.title ?? "",
   );
+}
+
+/**
+ * Editor montado dentro de una región de la interfaz (un grupo de edición).
+ * Devuelve la vista simulada, que es la superficie del editor en jsdom: lo que
+ * se escribe entra por `type()`→`onChange` y lo que llega por la prop `value`
+ * se puede leer con `text()`.
+ */
+function editorIn(region: HTMLElement): FakeView {
+  const view = viewFor(within(region).getByTestId("codemirror-mock"));
+  if (!view) throw new Error("La región no tiene un editor montado");
+  return view;
 }
 
 describe("App (shell Inkline)", () => {
@@ -488,6 +507,70 @@ describe("App (shell Inkline)", () => {
     expect(getDocumentsSnapshot().docs.map((doc) => doc.path)).toEqual(["/notas/nueva.md"]);
     expect(screen.getByText("Abierto: /notas/nueva.md")).toBeInTheDocument();
     expect(tabs(document.body)).toEqual(["nueva.md"]);
+
+    resetDocuments();
+  });
+
+  // T6 (S7): el mismo `.md` en los dos grupos es UN documento, no dos copias.
+  // El recorrido que se comprueba de extremo a extremo: se escribe en el editor
+  // del grupo 1 → su `onChange` deja el texto en el almacén único
+  // (`lib/documents`, un solo documento para las dos vistas) → `App` se vuelve a
+  // pintar y pasa el `contents` nuevo a los dos grupos → la vista previa de cada
+  // grupo se repinta con el texto nuevo y el `value` del editor del grupo 2 se
+  // sincroniza con el del grupo 1 (react-codemirror aplica el valor nuevo al
+  // documento del editor sin reemitir `onChange`, así que no hay bucle).
+  it("sincroniza lo escrito entre dos grupos con el mismo documento", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    // ⌘D divide; el grupo 2 nace vacío y con foco, y la paleta abre ahí el MISMO
+    // documento que ya vive en el grupo 1 (una pestaña por sección, S7).
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "k" }));
+    });
+    fireEvent.click(screen.getByRole("option", { name: /uno\.md/i }));
+    expect(tabs(container)).toEqual(["uno.md", "uno.md"]);
+    expect(getDocumentsSnapshot().docs).toHaveLength(1);
+
+    // El grupo 2 nace en modo editor: se le pide la vista dividida para poder
+    // mirar las dos vistas previas del mismo documento.
+    fireEvent.click(
+      within(screen.getByLabelText("Grupo de edición 2")).getByRole("button", { name: "Split" }),
+    );
+
+    const group1 = screen.getByLabelText("Grupo de edición 1");
+    const group2 = screen.getByLabelText("Grupo de edición 2");
+    expect(within(group1).getByLabelText("Vista previa")).toBeInTheDocument();
+    expect(within(group2).getByLabelText("Vista previa")).toBeInTheDocument();
+
+    // La edición entra por la vía real (el `onChange` del editor del grupo 1).
+    const escrito = "# uno editado en el grupo 1";
+    act(() => {
+      editorIn(group1).type(escrito);
+    });
+
+    // 1) El almacén único queda con el texto escrito, y sigue siendo UN documento.
+    expect(getDocumentsSnapshot().docs).toHaveLength(1);
+    expect(getDocumentsSnapshot().docs[0]?.contents).toBe(escrito);
+
+    // 2) Las dos vistas previas del mismo documento muestran lo escrito.
+    expect(within(group1).getByLabelText("Vista previa").textContent).toContain(escrito.slice(2));
+    expect(within(group2).getByLabelText("Vista previa").textContent).toContain(escrito.slice(2));
+
+    // 3) El editor del grupo 2 recibe el valor nuevo sin que nadie escriba en él.
+    expect(editorIn(group1).text()).toBe(escrito);
+    expect(editorIn(group2).text()).toBe(escrito);
 
     resetDocuments();
   });

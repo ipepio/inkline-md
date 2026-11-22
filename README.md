@@ -11,6 +11,12 @@ window built with Tauri 2.
 - **Two working modes** — rendered *viewer*, raw *editor*, and a resizable
   *split* with live preview (drag the divider; the layout is remembered per
   document).
+- **Editor groups** — `⌘D` splits the workspace into at most two groups, each
+  with its own document and its own editor/preview/split mode; the tab bar
+  stays one and is divided per group, and every shell action (open, save,
+  close, format) follows the focused group. The same file can live in both
+  groups, with edits appearing live in the other. The split is session-only:
+  nothing is persisted.
 - **File workspace** — side drawer with folder tree, recents and open-document
   tabs; fuzzy command palette (`⌘K`).
 - **Editor** — CodeMirror 6 with line numbers, Markdown highlighting,
