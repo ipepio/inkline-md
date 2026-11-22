@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { resetDocuments } from "@/lib/documents";
+import { openTextFile } from "@/lib/files";
 import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
 import App from "./App";
 
@@ -123,5 +125,27 @@ describe("App (shell Inkline)", () => {
         configurable: true,
       });
     }
+  });
+
+  // T1: la orquestación vive en hooks, pero el shell sigue abriendo desde el
+  // mismo punto de costura (`handleOpenDialog`) y mostrando el resultado.
+  it("abre en una pestaña el documento elegido en el diálogo", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/idea.md",
+      contents: "# idea",
+    });
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    expect(screen.getByText("Abierto: /notas/idea.md")).toBeInTheDocument();
+    expect(screen.queryByText("Ningún documento abierto")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Guardar/i })).toBeEnabled();
+
+    resetDocuments();
   });
 });

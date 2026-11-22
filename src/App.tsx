@@ -1,13 +1,17 @@
 /**
- * Shell de Inkline — Markdown Studio (ODD integración T2 + T4).
+ * Shell de Inkline — Markdown Studio (ODD editor groups · T1).
  *
- * Composición del mockup: rail de iconos (56px) + sidebar del espacio de
- * trabajo (256px) + área principal (topbar con breadcrumbs y estado de guardado,
- * pestañas de documentos y el área de lectura). El modo edición y su vista
- * dividida llegan en T3; aquí la lectura ya es real.
+ * Punto de composición: el rail de iconos (56px) + la sidebar del espacio de
+ * trabajo (256px) + el área principal (topbar con breadcrumbs y estado de
+ * guardado, pestañas de documentos y el área de trabajo). Toda la orquestación
+ * vive en hooks de `src/hooks/`; aquí sólo se unen estados y manejadores.
+ *
+ * Las costuras del arranque (`useWorkspaceBootstrap`), `handleOpenDialog`,
+ * `handleSave` y `handlePrintFromSettings` son estables: la rama hermana
+ * `feat/web-demo-mode` engancha ahí sus guardas de modo demo.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -29,77 +33,25 @@ import { RecentsList } from "@/components/files/RecentsList";
 import { TabsBar } from "@/components/files/TabsBar";
 import { MarkdownView } from "@/components/viewer/MarkdownView";
 import { EditorWorkspace, type EditorWorkspaceHandle } from "@/components/editor/EditorWorkspace";
-import { ExportMenu, type ExportMenuHandle } from "@/components/export/ExportMenu";
+import { ExportMenu } from "@/components/export/ExportMenu";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
-import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
 import { useTheme } from "@/hooks/useTheme";
-import {
-  closeDoc,
-  markSaved,
-  openDoc,
-  selectDoc,
-  setContents,
-  setViewState,
-  useDocuments,
-} from "@/lib/documents";
-import {
-  openTextFile,
-  readTextFile,
-  saveTextFile,
-  saveTextFileAs,
-} from "@/lib/files";
-import {
-  getSettingsSnapshot,
-  updateSettings,
-  useSettings,
-  zoomStep,
-  zoomedEditorFontSize,
-} from "@/lib/settings";
+import { useWorkspaceBootstrap } from "@/hooks/useWorkspaceBootstrap";
+import { useFileActions } from "@/hooks/useFileActions";
+import { useExportActions } from "@/hooks/useExportActions";
+import { useCloseConfirm } from "@/hooks/useCloseConfirm";
+import { useZoomControls } from "@/hooks/useZoomControls";
+import { useShellShortcuts } from "@/hooks/useShellShortcuts";
+import { useDocumentView } from "@/hooks/useDocumentView";
+import { usePaletteItems } from "@/hooks/usePaletteItems";
+import { displayName, isUntitled } from "@/hooks/untitled";
+import { useDocuments, selectDoc, setContents, setViewState } from "@/lib/documents";
+import { useSettings, updateSettings, zoomedEditorFontSize } from "@/lib/settings";
 import { comboLabel } from "@/lib/platform";
-import { documentStats } from "@/lib/text";
-import { exportStandaloneHtml } from "@/lib/export/html";
-import { htmlExportFileName } from "@/lib/export/names";
-import { openInBrowser, writeTemporaryExport } from "@/lib/export/operations";
-import {
-  fileNameOf,
-  flattenFiles,
-  listTree,
-  loadWorkspaceConfig,
-  pushRecent,
-  setWorkspace,
-  workspaceName,
-  type RecentFile,
-  type TreeNode,
-} from "@/lib/workspace";
-
-/** Prefijo interno de los documentos aún sin archivo en disco. */
-const UNTITLED_PREFIX = "untitled://";
-const UNTITLED_LABEL = "Sin título.md";
-
-function isUntitled(path: string): boolean {
-  return path.startsWith(UNTITLED_PREFIX);
-}
-
-function displayName(name: string): string {
-  return isUntitled(name) ? UNTITLED_LABEL : fileNameOf(name);
-}
-
-let untitledCounter = 0;
-
-/** Reparto recordado del divisor; se descarta cualquier valor no numérico. */
-function readSplitLayout(
-  viewState: Record<string, unknown> | undefined,
-): { editor: number; preview: number } | undefined {
-  const raw = viewState?.splitLayout as { editor?: unknown; preview?: unknown } | undefined;
-  if (!raw || typeof raw.editor !== "number" || typeof raw.preview !== "number") {
-    return undefined;
-  }
-  if (!Number.isFinite(raw.editor) || !Number.isFinite(raw.preview)) return undefined;
-  return { editor: raw.editor, preview: raw.preview };
-}
+import { workspaceName } from "@/lib/workspace";
 
 const RAIL_BUTTON =
   "grid size-[39px] place-items-center rounded-[9px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
@@ -113,237 +65,56 @@ export default function App() {
     [docs, activeId],
   );
   const editorRef = useRef<EditorWorkspaceHandle>(null);
-  const exportRef = useRef<ExportMenuHandle>(null);
 
-  const [root, setRoot] = useState<string | null>(null);
-  const [tree, setTree] = useState<TreeNode[]>([]);
-  const [recents, setRecents] = useState<RecentFile[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [status, setStatus] = useState("Listo");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [confirmClose, setConfirmClose] = useState<{ id: string; name: string } | null>(null);
 
-  // Carga inicial: raíz recordada + recientes persistidos.
-  useEffect(() => {
-    void (async () => {
-      try {
-        const config = await loadWorkspaceConfig();
-        setRecents(config.recents);
-        if (config.root) {
-          setRoot(config.root);
-          setTree(await listTree(config.root));
-        }
-      } catch (err) {
-        setStatus(`No se pudo cargar el espacio de trabajo: ${String(err)}`);
-      }
-    })();
+  // Arranque: raíz recordada + recientes persistidos (costura del modo demo).
+  const { root, tree, recents, status, setStatus, setRecents, handleChooseRoot } =
+    useWorkspaceBootstrap();
+
+  const { handleOpenFile, handleOpenDialog, handleNewDoc, handleSave } = useFileActions({
+    active,
+    defaultView: settings.defaultView,
+    setRecents,
+    setStatus,
+  });
+
+  const { exportRef, handlePrintFromSettings } = useExportActions({
+    active,
+    theme,
+    pageSize: settings.pageSize,
+    setStatus,
+  });
+
+  const { confirmClose, handleCloseDoc, handleConfirmClose, handleCancelClose } = useCloseConfirm({
+    docs,
+    confirmEnabled: settings.confirmClose,
+  });
+
+  const { zoomIn, zoomOut, resetZoom } = useZoomControls();
+
+  useShellShortcuts({
+    editorRef,
+    exportRef,
+    handleSave,
+    handleOpenDialog,
+    handleNewDoc,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    setSettingsOpen,
+    setSidebarOpen,
+  });
+
+  const { crumbs, mode, handleModeChange, stats, cursor, splitLayout, handleSplitLayoutChange } =
+    useDocumentView({ active, root, defaultView: settings.defaultView });
+
+  const { paletteFiles, paletteDocs } = usePaletteItems(tree, docs);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((open) => !open);
   }, []);
-
-  const registerOpen = useCallback(
-    async (path: string, contents: string): Promise<void> => {
-      openDoc(path, contents);
-      try {
-        setRecents(await pushRecent(path));
-      } catch {
-        // Los recientes son un extra: no interrumpen la apertura.
-      }
-    },
-    [],
-  );
-
-  const handleOpenFile = useCallback(
-    async (path: string): Promise<void> => {
-      if (isUntitled(path)) return;
-      try {
-        const doc = await readTextFile(path);
-        await registerOpen(doc.path, doc.contents);
-        setStatus(`Abierto: ${doc.path}`);
-      } catch (err) {
-        setStatus(`Error al abrir: ${String(err)}`);
-      }
-    },
-    [registerOpen],
-  );
-
-  const handleOpenDialog = useCallback(async (): Promise<void> => {
-    const doc = await openTextFile();
-    if (!doc) return;
-    await registerOpen(doc.path, doc.contents);
-    setStatus(`Abierto: ${doc.path}`);
-  }, [registerOpen]);
-
-  const handleNewDoc = useCallback((): void => {
-    untitledCounter += 1;
-    const id = openDoc(`${UNTITLED_PREFIX}${Date.now()}-${untitledCounter}`, "");
-    setViewState(id, { mode: settings.defaultView });
-  }, [settings.defaultView]);
-
-  const handleChooseRoot = useCallback(async (): Promise<void> => {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const picked = await open({ directory: true, multiple: false });
-    if (typeof picked !== "string") return;
-    setRoot(picked);
-    try {
-      await setWorkspace(picked);
-      setTree(await listTree(picked));
-    } catch {
-      setTree([]);
-    }
-  }, []);
-
-  const handleSave = useCallback(async (): Promise<void> => {
-    if (!active) return;
-    try {
-      if (isUntitled(active.path)) {
-        const savedPath = await saveTextFileAs(active.contents);
-        if (!savedPath) return;
-        closeDoc(active.id);
-        await registerOpen(savedPath, active.contents);
-        setStatus(`Guardado: ${savedPath}`);
-      } else {
-        await saveTextFile(active.path, active.contents);
-        markSaved(active.id);
-        setStatus(`Guardado: ${active.path}`);
-      }
-    } catch (err) {
-      setStatus(`Error al guardar: ${String(err)}`);
-    }
-  }, [active, registerOpen]);
-
-  const handleCloseDoc = useCallback(
-    (id: string): void => {
-      const doc = docs.find((candidate) => candidate.id === id);
-      if (!doc) return;
-      if (doc.dirty && settings.confirmClose) {
-        setConfirmClose({ id, name: displayName(doc.path) });
-        return;
-      }
-      closeDoc(id);
-    },
-    [docs, settings.confirmClose],
-  );
-
-  const handlePrintFromSettings = useCallback(async (): Promise<void> => {
-    if (!active) {
-      setStatus("No hay ningún documento que exportar");
-      return;
-    }
-    try {
-      const title = displayName(active.path);
-      const html = await exportStandaloneHtml(active.contents, {
-        theme,
-        title,
-        pageSize: settings.pageSize,
-      });
-      const target = await writeTemporaryExport(html, htmlExportFileName(title));
-      const opened = await openInBrowser(target);
-      setStatus(
-        opened === "opened"
-          ? `Impresión: el documento se abrió en tu navegador (${target}).`
-          : `Documento listo para imprimir: ${target}.`,
-      );
-    } catch (err) {
-      setStatus(`Error al exportar: ${String(err)}`);
-    }
-  }, [active, theme, settings.pageSize]);
-
-  // Zoom global de texto (⌘+ / ⌘− / ⌘0): editor y visor escalan juntos. Se lee
-  // del almacén dentro del manejador para que el atajo no dependa del render
-  // en el que se disparó.
-  const zoomIn = useCallback(() => {
-    updateSettings({ zoom: zoomStep(getSettingsSnapshot().zoom, 1) });
-  }, []);
-  const zoomOut = useCallback(() => {
-    updateSettings({ zoom: zoomStep(getSettingsSnapshot().zoom, -1) });
-  }, []);
-  const resetZoom = useCallback(() => {
-    updateSettings({ zoom: 100 });
-  }, []);
-
-  // Atajos del shell; ⌘K lo registra la propia paleta.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
-      const key = event.key.toLowerCase();
-      if (key === "s") {
-        event.preventDefault();
-        void handleSave();
-      } else if (key === "o") {
-        event.preventDefault();
-        void handleOpenDialog();
-      } else if (key === "n") {
-        event.preventDefault();
-        handleNewDoc();
-      } else if (key === "b") {
-        event.preventDefault();
-        editorRef.current?.applyFormat("bold");
-      } else if (key === "i") {
-        event.preventDefault();
-        editorRef.current?.applyFormat("italic");
-      } else if (key === "e") {
-        event.preventDefault();
-        void exportRef.current?.exportHtml();
-      } else if (key === ",") {
-        event.preventDefault();
-        setSettingsOpen(true);
-      } else if (key === "\\") {
-        event.preventDefault();
-        setSidebarOpen((open) => !open);
-      } else if (key === "=" || key === "+" || event.code === "NumpadAdd") {
-        event.preventDefault();
-        zoomIn();
-      } else if (key === "-" || event.code === "NumpadSubtract") {
-        event.preventDefault();
-        zoomOut();
-      } else if (key === "0") {
-        event.preventDefault();
-        resetZoom();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleSave, handleOpenDialog, handleNewDoc, zoomIn, zoomOut, resetZoom]);
-
-  const crumbs = useMemo(() => {
-    if (!active) return null;
-    const fileName = displayName(active.path);
-    if (!root || !active.path.startsWith(`${root}/`)) {
-      return { rootName: null, folders: [] as string[], fileName };
-    }
-    const relative = active.path.slice(root.length + 1);
-    const segments = relative.split("/").filter(Boolean);
-    return {
-      rootName: workspaceName(root),
-      folders: segments.slice(0, -1),
-      fileName,
-    };
-  }, [active, root]);
-
-  const paletteFiles = useMemo(() => flattenFiles(tree).map((node) => node.path), [tree]);
-  const paletteDocs = useMemo(
-    () =>
-      docs.map((doc) => ({
-        id: doc.id,
-        name: displayName(doc.path),
-        path: isUntitled(doc.path) ? "" : doc.path,
-      })),
-    [docs],
-  );
-
-  // Vista por documento (persistida en viewState); la nueva vista llega en T3.
-  const activeMode = active?.viewState.mode;
-  const mode: WorkspaceMode = isWorkspaceMode(activeMode) ? activeMode : settings.defaultView;
-
-  const handleModeChange = useCallback(
-    (next: WorkspaceMode) => {
-      if (!active) return;
-      setViewState(active.id, { ...active.viewState, mode: next });
-    },
-    [active],
-  );
-
-  const stats = useMemo(() => documentStats(active?.contents ?? ""), [active?.contents]);
-  const cursorState = active?.viewState as { line?: number; column?: number } | undefined;
 
   return (
     <div
@@ -379,7 +150,7 @@ export default function App() {
         <button
           type="button"
           className={cn(RAIL_BUTTON, sidebarOpen && "bg-muted text-foreground")}
-          onClick={() => setSidebarOpen((open) => !open)}
+          onClick={toggleSidebar}
           title={`Mostrar / ocultar el explorador (${comboLabel("\\")})`}
         >
           <PanelLeftIcon aria-hidden className="size-[17px]" />
@@ -462,7 +233,7 @@ export default function App() {
           </div>
           <button
             type="button"
-            onClick={handleChooseRoot}
+            onClick={() => void handleChooseRoot()}
             title="Elegir carpeta raíz"
             className="mx-3 mb-3 flex items-center gap-2.5 rounded-[9px] border border-border bg-card px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
@@ -624,10 +395,8 @@ export default function App() {
               spellcheck: settings.spellcheck,
             }}
             zoom={settings.zoom}
-            splitLayout={readSplitLayout(active.viewState)}
-            onSplitLayoutChange={(layout) =>
-              setViewState(active.id, { ...active.viewState, splitLayout: layout })
-            }
+            splitLayout={splitLayout}
+            onSplitLayoutChange={handleSplitLayoutChange}
           />
         ) : (
           <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">
@@ -647,8 +416,8 @@ export default function App() {
 
         <StatusBar
           fileName={active ? displayName(active.path) : null}
-          line={cursorState?.line}
-          column={cursorState?.column}
+          line={cursor?.line}
+          column={cursor?.column}
           words={stats.words}
           lines={stats.lines}
           zoom={settings.zoom}
@@ -672,11 +441,8 @@ export default function App() {
       <ConfirmCloseDialog
         open={confirmClose !== null}
         docName={confirmClose?.name ?? ""}
-        onConfirm={() => {
-          if (confirmClose) closeDoc(confirmClose.id);
-          setConfirmClose(null);
-        }}
-        onCancel={() => setConfirmClose(null)}
+        onConfirm={handleConfirmClose}
+        onCancel={handleCancelClose}
       />
 
       <SettingsDialog
