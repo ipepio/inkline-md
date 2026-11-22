@@ -359,6 +359,40 @@ describe("App (shell Inkline)", () => {
     resetDocuments();
   });
 
+  // Regresión: con dos documentos distintos en dos grupos, cerrar uno debe
+  // colapsar su grupo y dejar sólo el otro documento en un único grupo (sin
+  // abrir el superviviente en el grupo cerrado ni cerrarlos los dos después).
+  it("al cerrar uno de dos documentos en pantalla dividida colapsa su grupo sin duplicar el otro", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile)
+      .mockResolvedValueOnce({ path: "/notas/uno.md", contents: "# uno" })
+      .mockResolvedValueOnce({ path: "/notas/dos.md", contents: "# dos" });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(2);
+    expect(tabs(container)).toEqual(["uno.md", "dos.md"]);
+
+    // Cerrar dos.md (en el grupo 2) colapsa el grupo 2 y deja sólo uno.md.
+    fireEvent.click(screen.getByLabelText("Cerrar dos.md en el grupo 2"));
+
+    expect(getDocumentsSnapshot().docs).toHaveLength(1);
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(1);
+    expect(tabs(container)).toEqual(["uno.md"]);
+    expect(screen.getByLabelText("Grupo de edición 1").textContent).toContain("uno");
+
+    resetDocuments();
+  });
+
   // T5 (S5): con el grupo enfocado vacío, ⌘W no toca el documento del otro grupo
   // ni abre la confirmación.
   it("con el grupo con foco vacío ⌘W no cierra el documento del otro grupo", async () => {

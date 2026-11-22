@@ -155,4 +155,20 @@ describe("useEditorGroups", () => {
 
     expect(result.current.focusedDoc).toBeNull();
   });
+
+  // Regresión: al cerrar el documento activo del grupo 2, `lib/documents` mueve
+  // `activeId` a una vecina ya abierta (A). Ese cambio de fallback no debe
+  // abrir A dentro del grupo 2 antes de podarlo.
+  it("no duplica el documento superviviente en el grupo cerrado cuando cae activeId tras cerrar", () => {
+    const { result, rerender } = setup([A], A.id);
+    act(() => {
+      result.current.split();
+    });
+    rerender({ docs: [A, B], activeId: B.id });
+
+    rerender({ docs: [A], activeId: A.id });
+
+    expect(result.current.groups[0].docIds).toEqual([A.id]);
+    expect(result.current.groups[1].docIds).toEqual([B.id]);
+  });
 });

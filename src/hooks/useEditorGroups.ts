@@ -65,15 +65,29 @@ export function useEditorGroups({
   }, [state.focusedGroupId]);
 
   const lastSelected = useRef<string | null>(null);
+  const prevDocIds = useRef<Set<string>>(new Set());
   useEffect(() => {
+    const currentDocIds = new Set(docs.map((doc) => doc.id));
     if (activeId === null) {
       lastSelected.current = null;
+      prevDocIds.current = currentDocIds;
       return;
     }
-    if (lastSelected.current === activeId) return;
-    lastSelected.current = activeId;
-    dispatch({ type: "OPEN_DOC", docId: activeId, groupId: focusedRef.current });
-  }, [activeId]);
+    if (lastSelected.current !== activeId) {
+      // Si el documento activo anterior desapareció del almacén y el nuevo
+      // `activeId` ya existía, es el fallback automático de `closeDoc` (no una
+      // apertura explícita): no debe abrirse en el grupo enfocado antes de que
+      // `PRUNE_DOCS` colapse el grupo cerrado.
+      const prevActiveClosed =
+        lastSelected.current !== null && !currentDocIds.has(lastSelected.current);
+      const activeAlreadyExisted = prevDocIds.current.has(activeId);
+      lastSelected.current = activeId;
+      if (!(prevActiveClosed && activeAlreadyExisted)) {
+        dispatch({ type: "OPEN_DOC", docId: activeId, groupId: focusedRef.current });
+      }
+    }
+    prevDocIds.current = currentDocIds;
+  }, [activeId, docs]);
 
   const docFor = useCallback(
     (group: Group): OpenDocument | null =>
