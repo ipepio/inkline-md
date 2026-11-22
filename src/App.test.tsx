@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { getDocumentsSnapshot, resetDocuments, setContents, setViewState } from "@/lib/documents";
-import { openTextFile, readTextFile } from "@/lib/files";
+import { openTextFile, readTextFile, revealInFileManager } from "@/lib/files";
 import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
 import { loadWorkspaceConfig, pushRecent } from "@/lib/workspace";
 import type { FakeView } from "./components/editor/__fixtures__/codemirror-mock";
@@ -25,6 +25,7 @@ vi.mock("@/lib/files", () => ({
   readTextFile: vi.fn().mockResolvedValue({ path: "", contents: "" }),
   saveTextFile: vi.fn().mockResolvedValue(undefined),
   saveTextFileAs: vi.fn().mockResolvedValue(null),
+  revealInFileManager: vi.fn().mockResolvedValue(undefined),
 }));
 
 // jsdom no maqueta el layout del que CodeMirror depende, así que el editor se
@@ -389,6 +390,39 @@ describe("App (shell Inkline)", () => {
     expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(1);
     expect(tabs(container)).toEqual(["uno.md"]);
     expect(screen.getByLabelText("Grupo de edición 1").textContent).toContain("uno");
+
+    resetDocuments();
+  });
+
+  it("muestra menú contextual propio en archivos y bloquea el menú del navegador", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/guia.md",
+      contents: "# guía",
+    });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    // Clic derecho sobre la pestaña abre el menú propio y revela el archivo en Finder.
+    const tab = container.querySelector('[data-slot="tab"]') as HTMLElement;
+    expect(tab).not.toBeNull();
+    fireEvent.contextMenu(tab, { clientX: 100, clientY: 50 });
+
+    const revealItem = screen.getByRole("menuitem", { name: /Mostrar en Finder/i });
+    expect(revealItem).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(revealItem);
+    });
+    expect(revealInFileManager).toHaveBeenCalledWith("/notas/guia.md");
+
+    // Clic derecho en cualquier otra zona queda bloqueado (sin menú de navegador).
+    const globalCtx = new MouseEvent("contextmenu", { cancelable: true });
+    window.dispatchEvent(globalCtx);
+    expect(globalCtx.defaultPrevented).toBe(true);
 
     resetDocuments();
   });

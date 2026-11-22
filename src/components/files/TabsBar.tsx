@@ -29,7 +29,7 @@
  * secciones posibles; con una sola barra se conservan los de siempre.
  */
 
-import { Fragment } from "react";
+import { Fragment, type MouseEvent } from "react";
 import { FileTextIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
 import type { GroupId } from "@/hooks/editorGroups";
@@ -58,6 +58,12 @@ export interface TabsBarProps {
   onFocusGroup: (groupId: GroupId) => void;
   /** Cierre del almacén: el documento es único aunque esté en dos grupos. */
   onClose: (docId: string) => void;
+  /** Menú contextual sobre una pestaña. */
+  onContextMenuTab?: (
+    groupId: GroupId,
+    docId: string,
+    event: MouseEvent<HTMLDivElement>,
+  ) => void;
 }
 
 /** Texto de la sección vacía (S4): explica dónde se abrirá el próximo documento. */
@@ -69,6 +75,7 @@ export function TabsBar({
   onSelectTab,
   onFocusGroup,
   onClose,
+  onContextMenuTab,
 }: TabsBarProps) {
   const split = sections.length > 1;
 
@@ -132,6 +139,11 @@ export function TabsBar({
                       <div
                         key={doc.id}
                         data-slot="tab"
+                        onContextMenu={
+                          onContextMenuTab
+                            ? (event) => onContextMenuTab(section.groupId, doc.id, event)
+                            : undefined
+                        }
                         className={cn(
                           "relative flex max-w-[212px] min-w-[134px] items-center border-r border-border/60",
                           active ? "bg-background text-foreground" : "text-muted-foreground",

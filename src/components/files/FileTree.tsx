@@ -7,7 +7,7 @@
  * que llega después del montaje ya aparece abierto sin efectos de sincronía.
  */
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -18,10 +18,17 @@ import {
 import { cn } from "cn";
 import type { TreeNode } from "@/lib/workspace";
 
+export interface FileTreeContextTarget {
+  path: string;
+  name: string;
+  isDir: boolean;
+}
+
 export interface FileTreeProps {
   tree: TreeNode[];
   activePath?: string;
   onOpenFile: (path: string) => void;
+  onContextMenuItem?: (target: FileTreeContextTarget, event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 interface TreeLevelProps {
@@ -31,6 +38,7 @@ interface TreeLevelProps {
   collapsed: ReadonlySet<string>;
   onToggle: (path: string) => void;
   onOpenFile: (path: string) => void;
+  onContextMenuItem?: (target: FileTreeContextTarget, event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 const ROW_CLASS =
@@ -41,7 +49,7 @@ function indent(depth: number, extra = 0) {
   return { paddingLeft: `${10 + depth * 11 + extra}px` };
 }
 
-export function FileTree({ tree, activePath, onOpenFile }: FileTreeProps) {
+export function FileTree({ tree, activePath, onOpenFile, onContextMenuItem }: FileTreeProps) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
 
   function toggle(path: string) {
@@ -72,6 +80,7 @@ export function FileTree({ tree, activePath, onOpenFile }: FileTreeProps) {
       collapsed={collapsed}
       onToggle={toggle}
       onOpenFile={onOpenFile}
+      onContextMenuItem={onContextMenuItem}
     />
   );
 }
@@ -83,6 +92,7 @@ function TreeLevel({
   collapsed,
   onToggle,
   onOpenFile,
+  onContextMenuItem,
 }: TreeLevelProps) {
   return (
     // `role="list"` restaura la semántica que WebKit quita a las listas con
@@ -95,6 +105,12 @@ function TreeLevel({
               type="button"
               aria-expanded={!collapsed.has(node.path)}
               onClick={() => onToggle(node.path)}
+              onContextMenu={
+                onContextMenuItem
+                  ? (event) =>
+                      onContextMenuItem({ path: node.path, name: node.name, isDir: true }, event)
+                  : undefined
+              }
               className={ROW_CLASS}
               style={indent(depth)}
               title={node.path}
@@ -119,6 +135,7 @@ function TreeLevel({
                 collapsed={collapsed}
                 onToggle={onToggle}
                 onOpenFile={onOpenFile}
+                onContextMenuItem={onContextMenuItem}
               />
             ) : null}
           </li>
@@ -128,6 +145,12 @@ function TreeLevel({
               type="button"
               aria-current={node.path === activePath ? "true" : undefined}
               onClick={() => onOpenFile(node.path)}
+              onContextMenu={
+                onContextMenuItem
+                  ? (event) =>
+                      onContextMenuItem({ path: node.path, name: node.name, isDir: false }, event)
+                  : undefined
+              }
               className={cn(
                 ROW_CLASS,
                 node.path === activePath && "bg-accent text-foreground",

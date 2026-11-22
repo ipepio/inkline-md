@@ -34,8 +34,20 @@
  * `useShellShortcuts`, así que menú y atajos no pueden divergir.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from "react";
+import {
+  Columns2Icon,
+  CopyIcon,
+  FilePlus2Icon,
+  FileTextIcon,
   FolderIcon,
   FolderOpenIcon,
   MoonIcon,
@@ -44,6 +56,7 @@ import {
   SearchIcon,
   SettingsIcon,
   SunIcon,
+  XIcon,
 } from "lucide-react";
 import { cn } from "cn";
 import brandMarkLight from "@/assets/brand/inkline-white.png";
@@ -51,7 +64,12 @@ import brandMarkDark from "@/assets/brand/inkline-black.png";
 import brandWordmark from "@/assets/brand/inklineMD-text-logo.png";
 import brandWordmarkLight from "@/assets/brand/inklineMD-text-logo-white.png";
 import { CommandPalette } from "@/components/files/CommandPalette";
-import { FileTree } from "@/components/files/FileTree";
+import {
+  FileContextMenu,
+  type ContextMenuItem,
+  type FileContextMenuState,
+} from "@/components/files/FileContextMenu";
+import { FileTree, type FileTreeContextTarget } from "@/components/files/FileTree";
 import { RecentsList } from "@/components/files/RecentsList";
 import { TabsBar } from "@/components/files/TabsBar";
 import { MarkdownView } from "@/components/viewer/MarkdownView";
@@ -61,6 +79,7 @@ import { ExportMenu } from "@/components/export/ExportMenu";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/shell/StatusBar";
 import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
+import { useAppHardening } from "@/hooks/useAppHardening";
 import { useTheme } from "@/hooks/useTheme";
 import { useWorkspaceBootstrap } from "@/hooks/useWorkspaceBootstrap";
 import { useFileActions } from "@/hooks/useFileActions";
@@ -73,15 +92,19 @@ import { useDocumentView } from "@/hooks/useDocumentView";
 import { useEditorGroups } from "@/hooks/useEditorGroups";
 import { usePaletteItems } from "@/hooks/usePaletteItems";
 import { displayName, isUntitled } from "@/hooks/untitled";
+import { DEMO_NOTICE, isDemoMode } from "@/lib/demo/mode";
 import { useDocuments, selectDoc, setContents, setViewState } from "@/lib/documents";
+import { revealInFileManager } from "@/lib/files";
 import { useSettings, updateSettings, zoomedEditorFontSize } from "@/lib/settings";
-import { comboLabel } from "@/lib/platform";
+import { comboLabel, fileManagerLabel } from "@/lib/platform";
 import { workspaceName } from "@/lib/workspace";
 
 const RAIL_BUTTON =
   "grid size-[39px] place-items-center rounded-[9px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
 export default function App() {
+  useAppHardening();
+
   const { theme, toggleTheme } = useTheme();
   const settings = useSettings();
   const { docs, activeId } = useDocuments();
@@ -131,6 +154,8 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<FileContextMenuState | null>(null);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
   // Arranque: raíz recordada + recientes persistidos (costura del modo demo).
   const { root, tree, recents, status, setStatus, setRecents, handleChooseRoot } =
@@ -222,6 +247,148 @@ export default function App() {
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((open) => !open);
   }, []);
+
+  const handleRevealPath = useCallback(
+    async (path: string) => {
+      if (isDemoMode()) {
+        setStatus(DEMO_NOTICE);
+        return;
+      }
+      try {
+        await revealInFileManager(path);
+      } catch (err) {
+        setStatus(`No se pudo mostrar en ${fileManagerLabel()}: ${String(err)}`);
+      }
+    },
+    [setStatus],
+  );
+
+  const handleCopyPath = useCallback(
+    async (path: string) => {
+      try {
+        await navigator.clipboard.writeText(path);
+        setStatus(`Ruta copiada: ${path}`);
+      } catch {
+        setStatus("No se pudo copiar la ruta al portapapeles.");
+      }
+    },
+    [setStatus],
+  );
+
+  const openFileInSplit = useCallback(
+    (path: string) => {
+      const otherGroup = groups.groups.find((group) => group.id !== groups.focusedGroupId);
+      if (otherGroup) {
+        groups.focusGroup(otherGroup.id);
+      } else {
+        groups.split();
+      }
+      const open = docs.find((doc) => doc.path === path);
+      if (open) {
+        selectDoc(open.id);
+        dispatchGroups({ type: "OPEN_DOC", docId: open.id, groupId: otherGroup?.id });
+        return;
+      }
+      void handleOpenFile(path);
+    },
+    [docs, groups, dispatchGroups, handleOpenFile],
+  );
+
+  const openFileContextMenu = useCallback(
+    (target: FileTreeContextTarget, event: MouseEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const revealLabel = `Mostrar en ${fileManagerLabel()}`;
+      const items: ContextMenuItem[] = [];
+
+      if (!target.isDir) {
+        items.push(
+          {
+            id: "open",
+            label: "Abrir",
+            icon: <FileTextIcon className="size-3.5" />,
+            onSelect: () => openFileInFocusedGroup(target.path),
+          },
+          {
+            id: "open-split",
+            label: "Abrir en vista dividida",
+            icon: <Columns2Icon className="size-3.5" />,
+            onSelect: () => openFileInSplit(target.path),
+          },
+        );
+      }
+
+      items.push(
+        {
+          id: "reveal",
+          label: revealLabel,
+          icon: <FolderOpenIcon className="size-3.5" />,
+          separatorBefore: !target.isDir,
+          onSelect: () => void handleRevealPath(target.path),
+        },
+        {
+          id: "copy-path",
+          label: "Copiar ruta",
+          icon: <CopyIcon className="size-3.5" />,
+          onSelect: () => void handleCopyPath(target.path),
+        },
+      );
+
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        label: `Acciones para ${target.name}`,
+        items,
+        returnFocusTo: event.currentTarget,
+      });
+    },
+    [handleCopyPath, handleRevealPath, openFileInFocusedGroup, openFileInSplit],
+  );
+
+  const openTabContextMenu = useCallback(
+    (_groupId: string, docId: string, event: MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const doc = docs.find((candidate) => candidate.id === docId);
+      if (!doc) return;
+      const items: ContextMenuItem[] = [];
+      const hasDiskPath = !isUntitled(doc.path);
+
+      if (hasDiskPath) {
+        items.push(
+          {
+            id: "reveal",
+            label: `Mostrar en ${fileManagerLabel()}`,
+            icon: <FolderOpenIcon className="size-3.5" />,
+            onSelect: () => void handleRevealPath(doc.path),
+          },
+          {
+            id: "copy-path",
+            label: "Copiar ruta",
+            icon: <CopyIcon className="size-3.5" />,
+            onSelect: () => void handleCopyPath(doc.path),
+          },
+        );
+      }
+
+      items.push({
+        id: "close",
+        label: "Cerrar",
+        icon: <XIcon className="size-3.5" />,
+        separatorBefore: hasDiskPath,
+        onSelect: () => handleCloseDoc(doc.id),
+      });
+
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        label: `Acciones para ${displayName(doc.path)}`,
+        items,
+        returnFocusTo: event.currentTarget.querySelector("button"),
+      });
+    },
+    [docs, handleCloseDoc, handleCopyPath, handleRevealPath],
+  );
 
   return (
     <div
@@ -363,6 +530,7 @@ export default function App() {
                 tree={tree}
                 activePath={focusedDoc && !isUntitled(focusedDoc.path) ? focusedDoc.path : undefined}
                 onOpenFile={openFileInFocusedGroup}
+                onContextMenuItem={openFileContextMenu}
               />
             ) : (
               <p className="px-3 py-2 text-[11px] text-muted-foreground">
@@ -372,6 +540,9 @@ export default function App() {
             <RecentsList
               recents={recents}
               onOpenFile={openFileInFocusedGroup}
+              onContextMenuFile={(file, event) =>
+                openFileContextMenu({ ...file, isDir: false }, event)
+              }
             />
           </div>
         </aside>
@@ -452,17 +623,25 @@ export default function App() {
               }}
               onFocusGroup={groups.focusGroup}
               onClose={handleCloseDoc}
+              onContextMenuTab={openTabContextMenu}
             />
           </div>
-          <button
-            type="button"
-            onClick={handleNewDoc}
-            title={`Nuevo documento (${comboLabel("N")})`}
-            className="grid size-10 place-items-center border-r border-b border-border/60 text-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-          >
-            +
-          </button>
-          <div className="flex items-center border-b border-border px-3">
+          <div className="relative flex shrink-0 items-center gap-2 border-b border-border px-3">
+            {groups.groups[groups.groups.length - 1]?.id === groups.focusedGroupId ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-primary"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={handleNewDoc}
+              title={`Nuevo documento (${comboLabel("N")})`}
+              className="flex h-[29px] shrink-0 items-center gap-1.5 rounded-[7px] border border-border bg-card px-2.5 text-[11px] font-bold text-foreground transition-colors hover:border-primary/50 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <FilePlus2Icon aria-hidden className="size-3.5 shrink-0 text-primary" />
+              <span>Nuevo</span>
+            </button>
             <ExportMenu
               ref={exportRef}
               markdown={focusedDoc ? focusedDoc.contents : null}
@@ -536,6 +715,8 @@ export default function App() {
         onConfirm={handleConfirmClose}
         onCancel={handleCancelClose}
       />
+
+      <FileContextMenu menu={contextMenu} onClose={closeContextMenu} />
 
       <SettingsDialog
         open={settingsOpen}

@@ -31,3 +31,9 @@ export async function saveTextFileAs(contents: string): Promise<string | null> {
   await saveTextFile(target, contents);
   return target;
 }
+
+/** Muestra un archivo o carpeta en Finder (macOS) o en el explorador del sistema. */
+export async function revealInFileManager(path: string): Promise<void> {
+  const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+  await revealItemInDir(path);
+}

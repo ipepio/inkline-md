@@ -6,15 +6,20 @@
  * distintas siguen siendo distinguibles.
  */
 
+import type { MouseEvent } from "react";
 import { HistoryIcon } from "lucide-react";
 import type { RecentFile } from "@/lib/workspace";
 
 export interface RecentsListProps {
   recents: RecentFile[];
   onOpenFile: (path: string) => void;
+  onContextMenuFile?: (
+    file: { path: string; name: string },
+    event: MouseEvent<HTMLButtonElement>,
+  ) => void;
 }
 
-export function RecentsList({ recents, onOpenFile }: RecentsListProps) {
+export function RecentsList({ recents, onOpenFile, onContextMenuFile }: RecentsListProps) {
   return (
     <section aria-labelledby="recientes-heading" className="mt-7 px-2.5">
       <div className="flex items-center justify-between px-1.5 pb-2">
@@ -37,6 +42,12 @@ export function RecentsList({ recents, onOpenFile }: RecentsListProps) {
               <button
                 type="button"
                 onClick={() => onOpenFile(recent.path)}
+                onContextMenu={
+                  onContextMenuFile
+                    ? (event) =>
+                        onContextMenuFile({ path: recent.path, name: recent.name }, event)
+                    : undefined
+                }
                 title={recent.path}
                 className="flex h-9 w-full flex-col justify-center rounded-[7px] px-3 text-left text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >

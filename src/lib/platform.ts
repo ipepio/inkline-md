@@ -27,3 +27,8 @@ export function modifierLabel(): ModifierLabel {
 export function comboLabel(key: string): string {
   return isMacPlatform() ? `⌘${key}` : `Ctrl+${key}`;
 }
+
+/** Nombre del gestor de archivos del sistema para las etiquetas del menú contextual. */
+export function fileManagerLabel(): string {
+  return isMacPlatform() ? "Finder" : "el explorador de archivos";
+}
