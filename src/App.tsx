@@ -10,14 +10,21 @@
  * Desde T3 el área de trabajo son uno o dos grupos (`EditorGroups`): cada uno
  * con su documento activo y su propia vista. Lo que lee el chrome (crumbs,
  * indicador de guardado, barra de estado, exportación y ⌘S) es el documento del
- * grupo con foco; la barra de pestañas sigue siendo única hasta T4.
+ * grupo con foco. Desde T4 la barra de pestañas es UNA y está dividida en una
+ * sección por grupo (`TabsBar`).
+ *
+ * Las pestañas no pasan por el almacén: el clic entrega el grupo de la pestaña
+ * al modelo (`ACTIVATE_DOC` + `FOCUS_GROUP`) porque el puente de
+ * `useEditorGroups` abre en el grupo ENFOCADO, y eso es lo correcto sólo para
+ * ⌘O/⌘N/explorador/recientes/paleta. El cierre, en cambio, sí es del almacén
+ * (un documento es uno solo, S7) y el modelo se poda con los ids vivos.
  *
  * Las costuras del arranque (`useWorkspaceBootstrap`), `handleOpenDialog`,
  * `handleSave` y `handlePrintFromSettings` son estables: la rama hermana
  * `feat/web-demo-mode` engancha ahí sus guardas de modo demo.
  */
 
-import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -72,6 +79,32 @@ export default function App() {
   // documento del grupo con foco y lo único que leen topbar, guardado y estado.
   const groups = useEditorGroups({ defaultView: settings.defaultView, docs, activeId });
   const focusedDoc = groups.focusedDoc;
+
+  // Poda de los grupos al almacén (S6): un documento cerrado desde cualquier
+  // pestaña (⌘W, la cruz, el explorador) desaparece de TODAS las secciones. El
+  // modelo de grupos sólo guarda ids, así que se reconcilia con los ids vivos;
+  // si no hay nada que podar la acción devuelve el mismo estado y no re-renderiza.
+  const dispatchGroups = groups.dispatch;
+  useEffect(() => {
+    dispatchGroups({ type: "PRUNE_DOCS", docIds: docs.map((doc) => doc.id) });
+  }, [docs, dispatchGroups]);
+
+  // Secciones de la barra de pestañas (T4): las pestañas de cada grupo, ya
+  // resueltas contra el almacén único (el mismo documento puede estar en ambas).
+  const tabSections = useMemo(
+    () =>
+      groups.groups.map((group) => ({
+        groupId: group.id,
+        activeDocId: group.activeDocId,
+        docs: group.docIds.flatMap((docId) => {
+          const doc = docs.find((candidate) => candidate.id === docId);
+          return doc
+            ? [{ id: doc.id, name: displayName(doc.path), dirty: doc.dirty }]
+            : [];
+        }),
+      })),
+    [groups.groups, docs],
+  );
 
   // Handles de los editores por grupo: los atajos de formato apuntan al editor
   // del grupo con foco (T5 usará el mismo mapa para el resto del enrutado).
@@ -356,13 +389,13 @@ export default function App() {
         <div className="flex min-h-0 items-stretch bg-ink-side">
           <div className="min-w-0 flex-1">
             <TabsBar
-              docs={docs.map((doc) => ({
-                id: doc.id,
-                name: displayName(doc.path),
-                dirty: doc.dirty,
-              }))}
-              activeId={activeId}
-              onSelect={selectDoc}
+              sections={tabSections}
+              focusedGroupId={groups.focusedGroupId}
+              onSelectTab={(groupId, docId) => {
+                groups.dispatch({ type: "ACTIVATE_DOC", docId, groupId });
+                groups.focusGroup(groupId);
+              }}
+              onFocusGroup={groups.focusGroup}
               onClose={handleCloseDoc}
             />
           </div>

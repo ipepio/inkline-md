@@ -594,3 +594,114 @@ describe("secuencias", () => {
     expect(state.focusedGroupId).toBe("1");
   });
 });
+
+/**
+ * Poda contra los ids vivos del almacén (T4 · S6).
+ *
+ * El almacén único puede cerrar un documento (⌘W, la cruz de una pestaña, el
+ * explorador) sin pasar por el modelo de grupos: el modelo sólo guarda ids. Esta
+ * acción reconcilia el modelo con la lista de ids que siguen vivos y, por
+ * contrato, deja el estado EXACTAMENTE como lo dejaría cerrar ese documento en
+ * cada grupo (mismas vecinas activas, mismo colapso del grupo).
+ */
+describe("PRUNE_DOCS (poda contra los ids vivos)", () => {
+  it("quita el documento cerrado de los dos grupos (S7)", () => {
+    const state = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "OPEN_DOC", docId: B },
+      { type: "SPLIT" },
+      { type: "OPEN_DOC", docId: A },
+      { type: "OPEN_DOC", docId: C },
+    ]);
+    expect(state.groups[0].docIds).toEqual([A, B]);
+    expect(state.groups[1].docIds).toEqual([A, C]);
+
+    const next = apply(state, { type: "PRUNE_DOCS", docIds: [B, C] });
+
+    expect(next.groups[0].docIds).toEqual([B]);
+    expect(next.groups[1].docIds).toEqual([C]);
+    expect(next.groups[0].activeDocId).toBe(B);
+    expect(next.groups[1].activeDocId).toBe(C);
+    // Los grupos conservan su id y su modo; el foco no se toca al podar.
+    expect(next.groups.map((group) => group.id)).toEqual(["1", "2"]);
+    expect(next.focusedGroupId).toBe(state.focusedGroupId);
+  });
+
+  it("activa una vecina cuando cae la pestaña activa (misma regla que CLOSE_DOC)", () => {
+    // Activa C (la última): pasa a la anterior.
+    const last = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "OPEN_DOC", docId: B },
+      { type: "OPEN_DOC", docId: C },
+    ]);
+    const afterLast = apply(last, { type: "PRUNE_DOCS", docIds: [A, B] });
+    expect(afterLast.groups[0].docIds).toEqual([A, B]);
+    expect(afterLast.groups[0].activeDocId).toBe(B);
+
+    // Activa A (la primera, sin anterior): pasa a la siguiente.
+    const first = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "OPEN_DOC", docId: B },
+      { type: "ACTIVATE_DOC", docId: A },
+    ]);
+    const afterFirst = apply(first, { type: "PRUNE_DOCS", docIds: [B] });
+    expect(afterFirst.groups[0].docIds).toEqual([B]);
+    expect(afterFirst.groups[0].activeDocId).toBe(B);
+  });
+
+  it("vacía el grupo si cae su único documento y, con dos grupos, pasa al superviviente", () => {
+    const single = apply(sequence([{ type: "OPEN_DOC", docId: A }]), {
+      type: "PRUNE_DOCS",
+      docIds: [],
+    });
+    expect(single.groups).toHaveLength(1);
+    expect(single.groups[0].docIds).toEqual([]);
+    expect(single.groups[0].activeDocId).toBeNull();
+
+    // Con dos grupos se comporta como ⌘W sobre la única pestaña del grupo (S5).
+    const split = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "SPLIT" },
+      { type: "OPEN_DOC", docId: B },
+    ]);
+    const next = apply(split, { type: "PRUNE_DOCS", docIds: [A] });
+    expect(next.groups).toHaveLength(1);
+    expect(next.groups[0].id).toBe("1");
+    expect(next.groups[0].docIds).toEqual([A]);
+    expect(next.focusedGroupId).toBe("1");
+
+    // Dos grupos que se quedan sin nada: uno solo, vacío, y con foco válido.
+    const both = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "SPLIT" },
+      { type: "OPEN_DOC", docId: B },
+    ]);
+    const emptied = apply(both, { type: "PRUNE_DOCS", docIds: [] });
+    expect(emptied.groups).toHaveLength(1);
+    expect(emptied.groups[0].docIds).toEqual([]);
+    expect(emptied.groups[0].activeDocId).toBeNull();
+  });
+
+  it("es no-op (mismo objeto) si todos los ids siguen vivos", () => {
+    const state = sequence([
+      { type: "OPEN_DOC", docId: A },
+      { type: "OPEN_DOC", docId: B },
+      { type: "SPLIT" },
+      { type: "OPEN_DOC", docId: C },
+    ]);
+    expect(apply(state, { type: "PRUNE_DOCS", docIds: [A, B, C] })).toBe(state);
+    // Una lista con ids de más tampoco toca nada.
+    expect(apply(state, { type: "PRUNE_DOCS", docIds: [A, B, C, D] })).toBe(state);
+    // Los grupos vacíos no tienen nada que podar.
+    const empty = createInitialEditorGroups();
+    expect(apply(empty, { type: "PRUNE_DOCS", docIds: [] })).toBe(empty);
+  });
+
+  it("ignora ids que no son documentos y listas inválidas", () => {
+    const state = sequence([{ type: "OPEN_DOC", docId: A }]);
+    expect(apply(state, { type: "PRUNE_DOCS", docIds: [A, ""] })).toBe(state);
+    expect(
+      apply(state, { type: "PRUNE_DOCS", docIds: null as unknown as string[] }),
+    ).toBe(state);
+  });
+});

@@ -76,7 +76,12 @@ export type EditorGroupsAction =
   /** Clic en el área de un grupo: el foco manda ahí (S4 · S6). */
   | { type: "FOCUS_GROUP"; groupId: GroupId }
   /** Control segmentado de una vista: sólo cambia esa vista (S3). */
-  | { type: "SET_MODE"; mode: WorkspaceMode; groupId?: GroupId };
+  | { type: "SET_MODE"; mode: WorkspaceMode; groupId?: GroupId }
+  /**
+   * Reconciliación con el almacén único (S6): fuera de los grupos todo id que
+   * ya no existe. El shell la despacha cuando cambian los documentos abiertos.
+   */
+  | { type: "PRUNE_DOCS"; docIds: readonly string[] };
 
 /** Grupo por id, o `undefined` si no existe (las acciones lo tratan como no-op). */
 export function groupById(state: EditorGroupsState, id: GroupId): Group | undefined {
@@ -117,6 +122,8 @@ export function editorGroupsReducer(
       return focusGroup(state, action.groupId);
     case "SET_MODE":
       return setMode(state, action.mode, action.groupId);
+    case "PRUNE_DOCS":
+      return pruneDocs(state, action.docIds);
   }
 }
 
@@ -237,6 +244,42 @@ function closeDoc(
   const activeDocId =
     group.activeDocId === docId ? neighborDocId(group.docIds, index) : group.activeDocId;
   return replaceGroup(state, { ...group, docIds, activeDocId });
+}
+
+/**
+ * Poda contra los ids vivos del almacén (S6).
+ *
+ * El modelo no ve los documentos (sólo guarda ids) y el almacén único puede
+ * cerrar uno sin pasar por aquí: ⌘W, la cruz de una pestaña o el explorador. Por
+ * cada pestaña cuyo id ya no existe se aplica el MISMO cierre que `closeDoc` en
+ * SU grupo, así que la poda hereda sus reglas: la vecina activa, el grupo que se
+ * queda sin pestañas y, con dos grupos, el colapso en el superviviente (S5).
+ * Ninguna sección se queda con pestañas apuntando a ids inexistentes, y el
+ * invariante 3 se mantiene también después de podar.
+ *
+ * Sin nada que podar devuelve el MISMO estado: el shell la despacha en cada
+ * cambio del almacén y no debe provocar renders por ello.
+ */
+function pruneDocs(state: EditorGroupsState, docIds: readonly string[]): EditorGroupsState {
+  if (!Array.isArray(docIds)) return state;
+  const alive = new Set<string>();
+  for (const docId of docIds) {
+    if (isDocId(docId)) alive.add(docId);
+  }
+
+  const victims: { docId: string; groupId: GroupId }[] = [];
+  for (const group of state.groups) {
+    for (const docId of group.docIds) {
+      if (!alive.has(docId)) victims.push({ docId, groupId: group.id });
+    }
+  }
+  if (victims.length === 0) return state;
+
+  let next = state;
+  for (const victim of victims) {
+    next = closeDoc(next, victim.docId, victim.groupId);
+  }
+  return next;
 }
 
 /** Vecina activa tras cerrar: la anterior; si no la hay, la siguiente. */
