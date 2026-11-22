@@ -13,6 +13,8 @@ describe("shellShortcut", () => {
     expect(shellShortcut(meta("o"))).toBe("open");
     expect(shellShortcut(meta("n"))).toBe("new");
     expect(shellShortcut(meta("e"))).toBe("export");
+    // ⌘D divide el área en dos grupos (S1).
+    expect(shellShortcut(meta("d"))).toBe("split");
     // La tecla no distingue mayúsculas: con Shift el atajo sigue siendo el mismo.
     expect(shellShortcut(meta("S"))).toBe("save");
   });

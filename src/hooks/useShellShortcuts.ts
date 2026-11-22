@@ -18,6 +18,8 @@ export interface ShellShortcutsOptions {
   handleSave: () => Promise<void>;
   handleOpenDialog: () => Promise<void>;
   handleNewDoc: () => void;
+  /** ⌘D: dividir el área en dos grupos (S1). */
+  handleSplit: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
@@ -31,6 +33,7 @@ export function useShellShortcuts({
   handleSave,
   handleOpenDialog,
   handleNewDoc,
+  handleSplit,
   zoomIn,
   zoomOut,
   resetZoom,
@@ -51,6 +54,9 @@ export function useShellShortcuts({
           break;
         case "new":
           handleNewDoc();
+          break;
+        case "split":
+          handleSplit();
           break;
         case "bold":
           editorRef.current?.applyFormat("bold");
@@ -86,6 +92,7 @@ export function useShellShortcuts({
     handleSave,
     handleOpenDialog,
     handleNewDoc,
+    handleSplit,
     zoomIn,
     zoomOut,
     resetZoom,

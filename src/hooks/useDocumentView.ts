@@ -1,19 +1,17 @@
 /**
- * Vista del documento activo (ODD editor groups · T1).
+ * Vista del documento activo (ODD editor groups · T1 · T3).
  *
- * Reúne lo que el área de trabajo y la barra de estado leen del documento
- * activo: migas de pan, vista (editor/preview/split), métricas, cursor y el
- * reparto recordado del divisor. Se mantiene el mismo modelo que tenía el
- * shell: todo vive en el `viewState` del documento, compartido entre sus vistas.
+ * Reúne lo que el topbar y la barra de estado leen del documento activo: migas
+ * de pan y métricas/cursor. Desde T3 la vista (editor/preview/split) NO vive
+ * aquí: es del GRUPO (`hooks/editorGroups`), así que el `viewState.mode` de un
+ * documento ya no decide cómo se pinta. El reparto del divisor sigue siendo por
+ * documento y lo resuelve el shell de grupos al construir cada workspace.
  */
 
-import { useCallback, useMemo } from "react";
-import { setViewState, type OpenDocument } from "@/lib/documents";
-import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
-import type { DefaultView } from "@/lib/settings";
+import { useMemo } from "react";
+import type { OpenDocument } from "@/lib/documents";
 import { documentStats, type DocumentStats } from "@/lib/text";
 import { workspaceName } from "@/lib/workspace";
-import { readSplitLayout, type SplitLayout } from "./splitLayout";
 import { displayName } from "./untitled";
 
 /** Migas de pan del topbar: raíz (si la hay), carpetas y archivo. */
@@ -50,60 +48,22 @@ export interface CursorState {
 export interface UseDocumentViewOptions {
   active: OpenDocument | null;
   root: string | null;
-  /** Vista con la que se abre un documento sin vista propia. */
-  defaultView: DefaultView;
 }
 
 export interface DocumentView {
   crumbs: DocumentCrumbs | null;
-  mode: WorkspaceMode;
-  handleModeChange: (next: WorkspaceMode) => void;
   stats: DocumentStats;
   cursor: CursorState | undefined;
-  splitLayout: SplitLayout | undefined;
-  handleSplitLayoutChange: (layout: SplitLayout) => void;
 }
 
-export function useDocumentView({
-  active,
-  root,
-  defaultView,
-}: UseDocumentViewOptions): DocumentView {
+export function useDocumentView({ active, root }: UseDocumentViewOptions): DocumentView {
   const crumbs = useMemo(
     () => (active ? documentCrumbs(active.path, root) : null),
     [active, root],
   );
 
-  const activeMode = active?.viewState.mode;
-  const mode: WorkspaceMode = isWorkspaceMode(activeMode) ? activeMode : defaultView;
-
-  const handleModeChange = useCallback(
-    (next: WorkspaceMode) => {
-      if (!active) return;
-      setViewState(active.id, { ...active.viewState, mode: next });
-    },
-    [active],
-  );
-
-  const handleSplitLayoutChange = useCallback(
-    (layout: SplitLayout) => {
-      if (!active) return;
-      setViewState(active.id, { ...active.viewState, splitLayout: layout });
-    },
-    [active],
-  );
-
   const stats = useMemo(() => documentStats(active?.contents ?? ""), [active?.contents]);
   const cursor = active?.viewState as CursorState | undefined;
-  const splitLayout = active ? readSplitLayout(active.viewState) : undefined;
 
-  return {
-    crumbs,
-    mode,
-    handleModeChange,
-    stats,
-    cursor,
-    splitLayout,
-    handleSplitLayoutChange,
-  };
+  return { crumbs, stats, cursor };
 }

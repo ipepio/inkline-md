@@ -447,6 +447,28 @@
   border-radius: 6px;
 }
 
+/* ============================================================================
+ * Grupos de edición (ODD editor groups · T3 · S1 · S3 · S5)
+ *
+ * La marca de foco se pinta con una sola regla sobre el atributo que el shell ya
+ * escribe (`data-focused`), no con clases Tailwind: así los tests pueden
+ * verificar el contrato en el DOM y en jsdom no se depende de estilos
+ * calculados. Un grupo con foco lleva una barra de 2 px en su borde superior;
+ * `pointer-events: none` evita que esa barra se coma clics del grupo.
+ * ========================================================================== */
+@layer components {
+  [data-editor-group][data-focused="true"]::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    block-size: 2px;
+    background: var(--primary);
+    pointer-events: none;
+    z-index: 30;
+  }
+}
+
 /* Zoom del visor: niveles discretos de ZOOM_LEVELS (lib/settings). El
    atributo permite probar el contrato en jsdom, que no renderiza `zoom`
    inline; en WKWebView la regla CSS aplica la escala igual. */

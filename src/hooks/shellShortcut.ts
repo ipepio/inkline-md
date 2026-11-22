@@ -11,6 +11,8 @@ export type ShellShortcut =
   | "save"
   | "open"
   | "new"
+  /** ⌘D: divide el área de trabajo en dos grupos (S1). */
+  | "split"
   | "bold"
   | "italic"
   | "export"
@@ -39,6 +41,7 @@ export function shellShortcut(event: ShortcutEvent): ShellShortcut | null {
   if (key === "s") return "save";
   if (key === "o") return "open";
   if (key === "n") return "new";
+  if (key === "d") return "split";
   if (key === "b") return "bold";
   if (key === "i") return "italic";
   if (key === "e") return "export";

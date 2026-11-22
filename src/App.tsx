@@ -1,17 +1,23 @@
 /**
- * Shell de Inkline — Markdown Studio (ODD editor groups · T1).
+ * Shell de Inkline — Markdown Studio (ODD editor groups · T1 · T3).
  *
  * Punto de composición: el rail de iconos (56px) + la sidebar del espacio de
  * trabajo (256px) + el área principal (topbar con breadcrumbs y estado de
- * guardado, pestañas de documentos y el área de trabajo). Toda la orquestación
- * vive en hooks de `src/hooks/`; aquí sólo se unen estados y manejadores.
+ * guardado, pestañas de documentos y los grupos de edición). Toda la
+ * orquestación vive en hooks de `src/hooks/`; aquí sólo se unen estados y
+ * manejadores.
+ *
+ * Desde T3 el área de trabajo son uno o dos grupos (`EditorGroups`): cada uno
+ * con su documento activo y su propia vista. Lo que lee el chrome (crumbs,
+ * indicador de guardado, barra de estado, exportación y ⌘S) es el documento del
+ * grupo con foco; la barra de pestañas sigue siendo única hasta T4.
  *
  * Las costuras del arranque (`useWorkspaceBootstrap`), `handleOpenDialog`,
  * `handleSave` y `handlePrintFromSettings` son estables: la rama hermana
  * `feat/web-demo-mode` engancha ahí sus guardas de modo demo.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type RefObject } from "react";
 import {
   FolderIcon,
   FolderOpenIcon,
@@ -32,11 +38,11 @@ import { FileTree } from "@/components/files/FileTree";
 import { RecentsList } from "@/components/files/RecentsList";
 import { TabsBar } from "@/components/files/TabsBar";
 import { MarkdownView } from "@/components/viewer/MarkdownView";
-import { EditorWorkspace, type EditorWorkspaceHandle } from "@/components/editor/EditorWorkspace";
+import type { EditorWorkspaceHandle } from "@/components/editor/EditorWorkspace";
+import { EditorGroups, type EditorGroupRefs } from "@/components/editor/EditorGroups";
 import { ExportMenu } from "@/components/export/ExportMenu";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { StatusBar } from "@/components/shell/StatusBar";
-import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
 import { useTheme } from "@/hooks/useTheme";
 import { useWorkspaceBootstrap } from "@/hooks/useWorkspaceBootstrap";
@@ -46,6 +52,7 @@ import { useCloseConfirm } from "@/hooks/useCloseConfirm";
 import { useZoomControls } from "@/hooks/useZoomControls";
 import { useShellShortcuts } from "@/hooks/useShellShortcuts";
 import { useDocumentView } from "@/hooks/useDocumentView";
+import { useEditorGroups } from "@/hooks/useEditorGroups";
 import { usePaletteItems } from "@/hooks/usePaletteItems";
 import { displayName, isUntitled } from "@/hooks/untitled";
 import { useDocuments, selectDoc, setContents, setViewState } from "@/lib/documents";
@@ -60,11 +67,23 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
   const settings = useSettings();
   const { docs, activeId } = useDocuments();
-  const active = useMemo(
-    () => docs.find((doc) => doc.id === activeId) ?? null,
-    [docs, activeId],
+
+  // Grupos de edición (T3): un grupo como hoy, dos tras ⌘D. `focusedDoc` es el
+  // documento del grupo con foco y lo único que leen topbar, guardado y estado.
+  const groups = useEditorGroups({ defaultView: settings.defaultView, docs, activeId });
+  const focusedDoc = groups.focusedDoc;
+
+  // Handles de los editores por grupo: los atajos de formato apuntan al editor
+  // del grupo con foco (T5 usará el mismo mapa para el resto del enrutado).
+  const editorRefs = useRef<EditorGroupRefs>({ "1": null, "2": null });
+  const focusedEditorRef = useMemo<RefObject<EditorWorkspaceHandle>>(
+    () => ({
+      get current() {
+        return editorRefs.current[groups.focusedGroupId] ?? null;
+      },
+    }),
+    [groups.focusedGroupId],
   );
-  const editorRef = useRef<EditorWorkspaceHandle>(null);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -74,14 +93,14 @@ export default function App() {
     useWorkspaceBootstrap();
 
   const { handleOpenFile, handleOpenDialog, handleNewDoc, handleSave } = useFileActions({
-    active,
+    active: focusedDoc,
     defaultView: settings.defaultView,
     setRecents,
     setStatus,
   });
 
   const { exportRef, handlePrintFromSettings } = useExportActions({
-    active,
+    active: focusedDoc,
     theme,
     pageSize: settings.pageSize,
     setStatus,
@@ -95,11 +114,12 @@ export default function App() {
   const { zoomIn, zoomOut, resetZoom } = useZoomControls();
 
   useShellShortcuts({
-    editorRef,
+    editorRef: focusedEditorRef,
     exportRef,
     handleSave,
     handleOpenDialog,
     handleNewDoc,
+    handleSplit: groups.split,
     zoomIn,
     zoomOut,
     resetZoom,
@@ -107,8 +127,7 @@ export default function App() {
     setSidebarOpen,
   });
 
-  const { crumbs, mode, handleModeChange, stats, cursor, splitLayout, handleSplitLayoutChange } =
-    useDocumentView({ active, root, defaultView: settings.defaultView });
+  const { crumbs, stats, cursor } = useDocumentView({ active: focusedDoc, root });
 
   const { paletteFiles, paletteDocs } = usePaletteItems(tree, docs);
 
@@ -254,7 +273,7 @@ export default function App() {
             {root ? (
               <FileTree
                 tree={tree}
-                activePath={active && !isUntitled(active.path) ? active.path : undefined}
+                activePath={focusedDoc && !isUntitled(focusedDoc.path) ? focusedDoc.path : undefined}
                 onOpenFile={(path) => void handleOpenFile(path)}
               />
             ) : (
@@ -302,17 +321,17 @@ export default function App() {
             <span
               className={cn(
                 "flex items-center gap-1.5 rounded-[7px] border border-border px-2.5 py-2 text-[10px] text-muted-foreground",
-                active?.dirty && "text-foreground",
+                focusedDoc?.dirty && "text-foreground",
               )}
             >
               <span
                 aria-hidden
                 className={cn(
                   "inline-block size-[6px] rounded-full",
-                  active?.dirty ? "bg-[#e4b15d]" : "bg-[#94cd75]",
+                  focusedDoc?.dirty ? "bg-[#e4b15d]" : "bg-[#94cd75]",
                 )}
               />
-              {active?.dirty ? "Sin guardar" : "Guardado"}
+              {focusedDoc?.dirty ? "Sin guardar" : "Guardado"}
             </span>
             <button
               type="button"
@@ -325,7 +344,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => void handleSave()}
-              disabled={!active}
+              disabled={!focusedDoc}
               className="flex h-[33px] items-center gap-2 rounded-[8px] bg-primary px-3 text-[11px] font-bold text-primary-foreground transition-[filter] hover:brightness-110 disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               Guardar
@@ -358,8 +377,8 @@ export default function App() {
           <div className="flex items-center border-b border-border px-3">
             <ExportMenu
               ref={exportRef}
-              markdown={active ? active.contents : null}
-              docTitle={active ? displayName(active.path) : ""}
+              markdown={focusedDoc ? focusedDoc.contents : null}
+              docTitle={focusedDoc ? displayName(focusedDoc.path) : ""}
               theme={theme}
               pageSize={settings.pageSize}
               onStatus={setStatus}
@@ -367,55 +386,40 @@ export default function App() {
           </div>
         </div>
 
-        {/* Frontera por documento: un fallo del editor no tumba el shell y se
-            reinicia al cambiar de pestaña (key por documento). */}
-        <ErrorBoundary area="el documento" key={active?.id ?? "sin-documento"}>
-          {active ? (
-          <EditorWorkspace
-            ref={editorRef}
-            doc={{ id: active.id, contents: active.contents, viewState: active.viewState }}
-            theme={theme}
-            mode={mode}
-            onModeChange={handleModeChange}
-            onContents={setContents}
-            onViewState={setViewState}
-            preview={
-              <MarkdownView
-                markdown={active.contents}
-                theme={theme}
-                fontSize={settings.previewFontSize}
-                className={settings.previewFont === "serif" ? "inkline-serif" : undefined}
-              />
-            }
-            editorConfig={{
-              fontSize: zoomedEditorFontSize(settings.editorFontSize, settings.zoom),
-              tabWidth: settings.tabWidth,
-              lineNumbers: settings.lineNumbers,
-              wordWrap: settings.wordWrap,
-              spellcheck: settings.spellcheck,
-            }}
-            zoom={settings.zoom}
-            splitLayout={splitLayout}
-            onSplitLayoutChange={handleSplitLayoutChange}
-          />
-        ) : (
-          <section className="flex min-h-0 flex-1 flex-col bg-ink-preview">
-            <div className="grid h-full place-items-center text-center">
-              <div>
-                <h2 className="text-lg font-bold text-foreground">
-                  Ningún documento abierto
-                </h2>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Abre un archivo con {comboLabel("O")} o crea uno nuevo con {comboLabel("N")}.
-                </p>
-              </div>
-            </div>
-          </section>
+        {/* Grupos de edición: uno como hoy o dos tras ⌘D, cada uno con su
+            documento activo y su propia vista. La frontera de error vive dentro
+            de cada grupo, keyed por documento. */}
+        <EditorGroups
+          groups={groups.groups}
+          focusedGroupId={groups.focusedGroupId}
+          docs={docs}
+          theme={theme}
+          editorConfig={{
+            fontSize: zoomedEditorFontSize(settings.editorFontSize, settings.zoom),
+            tabWidth: settings.tabWidth,
+            lineNumbers: settings.lineNumbers,
+            wordWrap: settings.wordWrap,
+            spellcheck: settings.spellcheck,
+          }}
+          zoom={settings.zoom}
+          previewFor={(doc) => (
+            <MarkdownView
+              markdown={doc.contents}
+              theme={theme}
+              fontSize={settings.previewFontSize}
+              className={settings.previewFont === "serif" ? "inkline-serif" : undefined}
+            />
           )}
-        </ErrorBoundary>
+          onModeChange={groups.setMode}
+          onFocus={groups.focusGroup}
+          onCloseGroup={groups.closeGroup}
+          onContents={setContents}
+          onViewState={setViewState}
+          editorRefs={editorRefs}
+        />
 
         <StatusBar
-          fileName={active ? displayName(active.path) : null}
+          fileName={focusedDoc ? displayName(focusedDoc.path) : null}
           line={cursor?.line}
           column={cursor?.column}
           words={stats.words}

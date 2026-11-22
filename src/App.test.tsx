@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { resetDocuments } from "@/lib/documents";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { getDocumentsSnapshot, resetDocuments, setViewState } from "@/lib/documents";
 import { openTextFile } from "@/lib/files";
 import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
 import App from "./App";
@@ -145,6 +145,112 @@ describe("App (shell Inkline)", () => {
     expect(screen.getByText("Abierto: /notas/idea.md")).toBeInTheDocument();
     expect(screen.queryByText("Ningún documento abierto")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Guardar/i })).toBeEnabled();
+
+    resetDocuments();
+  });
+
+  // T3 (S1 · S3 · S4 · S5): ⌘D divide el área en dos grupos y el nuevo nace
+  // vacío con la llamada a la acción y su cruz de cierre.
+  it("divide el área en dos grupos con ⌘D", () => {
+    resetDocuments();
+    const { container } = render(<App />);
+
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(1);
+    expect(screen.queryByLabelText("Cerrar grupo")).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(2);
+    // Sin documento, los dos grupos explican dónde se abrirá (S4).
+    expect(screen.getAllByText(/se abrirá en este editor/i)).toHaveLength(2);
+    expect(screen.getAllByLabelText("Cerrar grupo")).toHaveLength(2);
+    // El grupo con foco es el nuevo, y se marca.
+    expect(screen.getByLabelText("Grupo de edición 2")).toHaveAttribute("data-focused", "true");
+
+    // Con dos grupos, ⌘D ya no abre un tercero.
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(2);
+
+    resetDocuments();
+  });
+
+  // T3 (S5): la cruz de un grupo lo cierra y el superviviente sigue en pie.
+  it("cierra un grupo con su cruz", () => {
+    resetDocuments();
+    const { container } = render(<App />);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    fireEvent.click(within(screen.getByLabelText("Grupo de edición 2")).getByLabelText("Cerrar grupo"));
+
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(1);
+    expect(screen.queryByLabelText("Cerrar grupo")).not.toBeInTheDocument();
+
+    resetDocuments();
+  });
+
+  // T3: la vista pasa a ser del GRUPO; el `viewState.mode` del documento ya no
+  // decide cómo se pinta el área de trabajo.
+  it("la vista del área es la del grupo, no la del documento", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/modo.md",
+      contents: "# modo",
+    });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    const docId = getDocumentsSnapshot().activeId;
+    expect(docId).not.toBeNull();
+    act(() => {
+      setViewState(docId as string, { mode: "preview" });
+    });
+
+    // Las preferencias de fábrica abren en «split»: el documento no manda.
+    expect(container.querySelector("[data-mode]")).toHaveAttribute("data-mode", "split");
+
+    resetDocuments();
+  });
+
+  // T3: cada grupo mantiene su propia vista y su propio documento.
+  it("cambia la vista de un grupo sin tocar la del otro", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile)
+      .mockResolvedValueOnce({ path: "/notas/uno.md", contents: "# uno" })
+      .mockResolvedValueOnce({ path: "/notas/dos.md", contents: "# dos" });
+
+    render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    const group1 = screen.getByLabelText("Grupo de edición 1");
+    const group2 = screen.getByLabelText("Grupo de edición 2");
+    fireEvent.click(within(group2).getByRole("button", { name: "Preview" }));
+
+    // El grupo 2 se queda en vista previa…
+    expect(group2.querySelector('[data-pane="editor"]')).toBeNull();
+    expect(group2.querySelector('[data-pane="preview"]')).not.toBeNull();
+    // …y el grupo 1 conserva la suya (split: editor y vista previa).
+    expect(group1.querySelector('[data-pane="editor"]')).not.toBeNull();
+    expect(group1.querySelector('[data-pane="preview"]')).not.toBeNull();
+    // Cada grupo muestra su propio documento.
+    expect(group1.textContent).toContain("uno");
+    expect(group2.textContent).toContain("dos");
 
     resetDocuments();
   });

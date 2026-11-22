@@ -13,6 +13,7 @@ function setup() {
     handleSave: vi.fn().mockResolvedValue(undefined),
     handleOpenDialog: vi.fn().mockResolvedValue(undefined),
     handleNewDoc: vi.fn(),
+    handleSplit: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
     resetZoom: vi.fn(),
@@ -47,6 +48,16 @@ describe("useShellShortcuts", () => {
     expect(open.defaultPrevented).toBe(true);
     expect(options.handleOpenDialog).toHaveBeenCalledTimes(1);
     expect(options.handleNewDoc).toHaveBeenCalledTimes(1);
+  });
+
+  // S1: ⌘D divide el área de trabajo (el enrutado por grupo llega en T5).
+  it("divide el área con ⌘D", () => {
+    const { options } = setup();
+
+    const split = press({ metaKey: true, key: "d" });
+
+    expect(split.defaultPrevented).toBe(true);
+    expect(options.handleSplit).toHaveBeenCalledTimes(1);
   });
 
   it("aplica formato en el editor y exporta desde el menú", () => {

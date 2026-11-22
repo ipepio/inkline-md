@@ -1,9 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
-import { setViewState, type OpenDocument } from "@/lib/documents";
+import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import type { OpenDocument } from "@/lib/documents";
 import { documentCrumbs, useDocumentView } from "./useDocumentView";
-
-vi.mock("@/lib/documents", () => ({ setViewState: vi.fn() }));
 
 function doc(overrides: Partial<OpenDocument> = {}): OpenDocument {
   return {
@@ -16,10 +14,6 @@ function doc(overrides: Partial<OpenDocument> = {}): OpenDocument {
     ...overrides,
   };
 }
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
 
 describe("documentCrumbs", () => {
   it("descompone la ruta bajo la raíz del espacio de trabajo", () => {
@@ -63,51 +57,13 @@ describe("documentCrumbs", () => {
   });
 });
 
+// T3: la vista es del grupo, así que el hook ya no lee ni escribe el modo del
+// documento (antes lo guardaba en `viewState.mode`).
 describe("useDocumentView", () => {
-  it("usa la vista guardada del documento cuando es válida", () => {
-    const active = doc({ viewState: { mode: "preview" } });
-
-    const { result } = renderHook(() =>
-      useDocumentView({ active, root: "/notas", defaultView: "split" }),
-    );
-
-    expect(result.current.mode).toBe("preview");
-  });
-
-  it("cae a la vista por defecto si el documento no tiene una válida", () => {
-    const active = doc({ viewState: { mode: "otra-cosa" } });
-
-    const { result } = renderHook(() =>
-      useDocumentView({ active, root: "/notas", defaultView: "editor" }),
-    );
-
-    expect(result.current.mode).toBe("editor");
-  });
-
-  it("guarda la nueva vista sin perder el resto del estado de vista", () => {
-    const active = doc({ viewState: { line: 4, column: 2 } });
-
-    const { result } = renderHook(() =>
-      useDocumentView({ active, root: "/notas", defaultView: "split" }),
-    );
-
-    act(() => {
-      result.current.handleModeChange("preview");
-    });
-
-    expect(setViewState).toHaveBeenCalledWith("doc-1", {
-      line: 4,
-      column: 2,
-      mode: "preview",
-    });
-  });
-
   it("expone cruces, estadísticas y cursor del documento activo", () => {
     const active = doc({ viewState: { line: 3, column: 7 } });
 
-    const { result } = renderHook(() =>
-      useDocumentView({ active, root: "/notas", defaultView: "split" }),
-    );
+    const { result } = renderHook(() => useDocumentView({ active, root: "/notas" }));
 
     expect(result.current.crumbs).toEqual({
       rootName: "notas",
@@ -119,37 +75,20 @@ describe("useDocumentView", () => {
     expect(result.current.cursor).toEqual({ line: 3, column: 7 });
   });
 
-  it("sin documento no hay cruces ni cursor y no escribe estado", () => {
-    const { result } = renderHook(() =>
-      useDocumentView({ active: null, root: "/notas", defaultView: "split" }),
-    );
-
-    act(() => {
-      result.current.handleModeChange("preview");
-      result.current.handleSplitLayoutChange({ editor: 50, preview: 50 });
-    });
+  it("sin documento no hay cruces ni cursor", () => {
+    const { result } = renderHook(() => useDocumentView({ active: null, root: "/notas" }));
 
     expect(result.current.crumbs).toBeNull();
     expect(result.current.cursor).toBeUndefined();
-    expect(result.current.splitLayout).toBeUndefined();
-    expect(setViewState).not.toHaveBeenCalled();
+    expect(result.current.stats.words).toBe(0);
   });
 
-  it("recuerda el reparto del divisor en el estado de vista del documento", () => {
-    const active = doc({ viewState: { mode: "split", line: 2 } });
+  it("no publica ninguna vista: eso es del grupo", () => {
+    const active = doc({ viewState: { mode: "preview" } });
 
-    const { result } = renderHook(() =>
-      useDocumentView({ active, root: "/notas", defaultView: "split" }),
-    );
+    const { result } = renderHook(() => useDocumentView({ active, root: "/notas" }));
 
-    act(() => {
-      result.current.handleSplitLayoutChange({ editor: 60, preview: 40 });
-    });
-
-    expect(setViewState).toHaveBeenCalledWith("doc-1", {
-      mode: "split",
-      line: 2,
-      splitLayout: { editor: 60, preview: 40 },
-    });
+    expect(result.current).not.toHaveProperty("mode");
+    expect(result.current).not.toHaveProperty("handleModeChange");
   });
 });
