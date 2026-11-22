@@ -35,7 +35,7 @@ grupos con edición sincronizada.
 | ID | Specs | Ruta | Commit |
 |----|-------|------|--------|
 | T1 | (habilita S1–S7) | worker: extraer orquestación de `App.tsx` a hooks (`src/hooks/`) sin cambio de comportamiento; costuras estables para el merge del demo | 6b3737c |
-| T2 | S1–S4, S7 | worker: modelo de grupos (reducer puro: split/closeGroup/open/closeDoc/activate/focus/setMode) + tests exhaustivos | — |
+| T2 | S1–S4, S7 | worker: modelo de grupos (reducer puro: split/closeGroup/open/closeDoc/activate/focus/setMode) + tests exhaustivos | a9ce9bb |
 | T3 | S1, S3–S5 | worker: shell de grupos (render máx 2, divisor redimensionable entre grupos, × visible sólo con 2, CTA vacía, marca de foco) | — |
 | T4 | S6 | worker: `TabsBar` dividida en secciones por grupo con divisor | — |
 | T5 | S2–S5, S7 | worker: enrutado de acciones al grupo enfocado (⌘D, ⌘O/⌘N, ⌘W, ⌘S, ⌘E, explorador/recientes/paleta, formato, barra de estado) | — |
@@ -47,3 +47,4 @@ grupos con edición sincronizada.
 - **L2**: Respuestas de diseño: al dividir → grupo vacío con CTA · cierre → ⌘W cierra el doc del grupo enfocado y con 2 grupos aparece una cruz por grupo (sus pestañas pasan al superviviente) · pestañas → una barra dividida en secciones por grupo «tipo chrome» · persistencia → NO (sesión efímera) y el mismo md puede estar en ambos grupos, con edición sincronizada.
 - **L3**: Coordinación inter-sesiones: la rama hermana `feat/web-demo-mode` (landing, `5abcb92`) añade guardas `isDemoMode()` en App.tsx; mi rama nace de `main` (`8af6088`) en un worktree aparte (`/Users/ipepio/Workspace/ipepio/md_viewer-groups`) y preserva costuras estables para su merge.
 - **L4**: T1 completado (6b3737c): App.tsx 694→460 líneas, 11 módulos bajo `src/hooks/` (7 hooks de orquestación + 3 piezas puras + `useTheme` intacto), 59 tests nuevos. Costuras para `feat/web-demo-mode` preservadas y nombradas (bootstrap con orden interno idéntico, `handleOpenDialog`, `handleSave`, export/print). Gates del juez: **297/297 + build ✓**; sin cambio observable de comportamiento.
+- **L5**: T2 completado (a9ce9bb): `src/hooks/editorGroups.ts` (reducer puro de 7 acciones + selectores, sin React) y 49 tests que verifican invariantes e inmutabilidad tras cada paso. El mismo doc puede vivir en ambos grupos (S7); `CLOSE_GROUP` fusiona sus pestañas al superviviente en orden y deduplicadas (S5); `SPLIT` nace vacío en modo editor (S3–S4). Gates del juez: **346/346 + build ✓**.
