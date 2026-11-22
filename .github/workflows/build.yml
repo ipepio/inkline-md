@@ -45,11 +45,18 @@ jobs:
             libxdo-dev \
             libssl-dev
       - run: pnpm install --frozen-lockfile
-      - run: pnpm tauri build --bundles appimage
+      # AppImage para cualquier distro (autocontenido, ~87 MB) y .deb para
+      # Debian/Ubuntu, que delega WebKit en el sistema y pesa una décima parte.
+      - run: pnpm tauri build --bundles appimage,deb
       - uses: actions/upload-artifact@v4
         with:
           name: inkline-linux-appimage
           path: src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inkline-linux-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
           if-no-files-found: error
 
   windows:
