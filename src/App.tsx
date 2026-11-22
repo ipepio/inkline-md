@@ -27,6 +27,11 @@
  * Las costuras del arranque (`useWorkspaceBootstrap`), `handleOpenDialog`,
  * `handleSave` y `handlePrintFromSettings` son estables: la rama hermana
  * `feat/web-demo-mode` engancha ahí sus guardas de modo demo.
+ *
+ * Barra de menú nativa (T7): Rust construye Archivo/Editar/Ver (más la app y
+ * Ventana en macOS) y emite `inkline://menu` con el id del ítem;
+ * `useNativeMenu` lo despacha con los MISMOS manejadores que
+ * `useShellShortcuts`, así que menú y atajos no pueden divergir.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
@@ -62,7 +67,8 @@ import { useFileActions } from "@/hooks/useFileActions";
 import { useExportActions } from "@/hooks/useExportActions";
 import { useCloseConfirm } from "@/hooks/useCloseConfirm";
 import { useZoomControls } from "@/hooks/useZoomControls";
-import { useShellShortcuts } from "@/hooks/useShellShortcuts";
+import { useShellShortcuts, type ShellShortcutsOptions } from "@/hooks/useShellShortcuts";
+import { useNativeMenu } from "@/hooks/useNativeMenu";
 import { useDocumentView } from "@/hooks/useDocumentView";
 import { useEditorGroups } from "@/hooks/useEditorGroups";
 import { usePaletteItems } from "@/hooks/usePaletteItems";
@@ -189,7 +195,9 @@ export default function App() {
 
   const { zoomIn, zoomOut, resetZoom } = useZoomControls();
 
-  useShellShortcuts({
+  // Atajos de teclado y menú nativo comparten manejadores (T7): la misma tabla
+  // (`shellShortcut` → `applyShellAction`) sirve a los dos caminos.
+  const shellActions: ShellShortcutsOptions = {
     editorRef: focusedEditorRef,
     exportRef,
     handleSave,
@@ -202,7 +210,10 @@ export default function App() {
     resetZoom,
     setSettingsOpen,
     setSidebarOpen,
-  });
+  };
+
+  useShellShortcuts(shellActions);
+  useNativeMenu(shellActions);
 
   const { crumbs, stats, cursor } = useDocumentView({ active: focusedDoc, root });
 
