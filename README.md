@@ -27,6 +27,9 @@ window built with Tauri 2.
 - **Export** — standalone HTML, Markdown copy, and Office formats
   (`.docx`, `.odt` via macOS `textutil`); printing goes through the system
   browser.
+- **Native menu bar & shortcuts** — native File/Edit/View menus routed to the
+  same shell actions as keyboard shortcuts (`⌘D`, `⌘W`, `⌘O`, `⌘S`, `⌘K`,
+  `⌘+/-`/`⌘0`), with platform-aware shortcut labels.
 - **Settings** — theme (system/dark/light), editor options, export page size;
   preferences and per-document state persist locally.
 - **Local-first** — files are written atomically (write-then-rename) and
@@ -61,6 +64,7 @@ pnpm tauri dev
 | `pnpm tauri dev` | Desktop app in dev mode |
 | `pnpm test` | Vitest suite (jsdom) |
 | `pnpm build` | Type-check + Vite production build |
+| `pnpm build:demo` | Static web demo build (`VITE_DEMO=1`) with bundled sample doc |
 | `pnpm tauri build` | Bundled desktop app for your OS |
 
 ## Desktop bundles
