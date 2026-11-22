@@ -1,5 +1,7 @@
 # Inkline
 
+[![Built with NaN](https://nan.builders/badge/built-with-nan-compact.svg)](https://nan.builders/?ref=built-with-nan)
+
 ![Inkline](src/assets/brand/inkline.png)
 
 Inkline is a local-first Markdown studio for the desktop: a distraction-free
