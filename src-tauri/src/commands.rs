@@ -24,6 +24,11 @@ pub fn write_file(path: String, contents: String) -> Result<(), String> {
 /// Write via a temp file in the same directory plus rename, so a crash never
 /// leaves a truncated document behind.
 pub fn write_atomically(path: &str, contents: &str) -> std::io::Result<()> {
+    write_bytes_atomically(path, contents.as_bytes())
+}
+
+/// Atomic binary write (temp file in the same directory + `sync_all` + rename).
+pub fn write_bytes_atomically(path: &str, contents: &[u8]) -> std::io::Result<()> {
     let target = Path::new(path);
     let dir = match target.parent() {
         Some(p) if !p.as_os_str().is_empty() => p,
@@ -36,7 +41,7 @@ pub fn write_atomically(path: &str, contents: &str) -> std::io::Result<()> {
     let tmp_path = dir.join(format!(".inkline-tmp-{}-{nanos}.tmp", std::process::id()));
     {
         let mut file = fs::File::create(&tmp_path)?;
-        file.write_all(contents.as_bytes())?;
+        file.write_all(contents)?;
         file.sync_all()?;
     }
     match fs::rename(&tmp_path, target) {

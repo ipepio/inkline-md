@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
  * El diálogo del sistema y el puente IPC se mockean: el contrato de la
- * exportación a Word/OpenDocument (nombre propuesto, filtro, formato y carga
- * HTML) se verifica en jsdom sin abrir ventanas ni ejecutar textutil.
+ * exportación a Word/OpenDocument (nombre propuesto, filtro, formato y modelo
+ * estructural `OfficeDoc`) se verifica en jsdom; la generación real de los
+ * paquetes `.docx` y `.odt` se prueba en `src-tauri/src/export/mod.rs`.
  */
 const dialog = vi.hoisted(() => ({ save: vi.fn() }));
 const core = vi.hoisted(() => ({ invoke: vi.fn() }));
@@ -14,14 +15,15 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: core.invoke }));
 import {
   OFFICE_FORMATS,
   exportOfficeDocument,
+  markdownToOfficeDoc,
   officeExportFileName,
-  officeHtml,
+  type OfficeDoc,
 } from "./documents";
 
 const DOCUMENT = [
   "# Título del documento",
   "",
-  "Un párrafo con `código` y **negrita**.",
+  "Un párrafo con `código`, **negrita**, *cursiva*, ~~tachado~~ y [enlace](https://inkline.dev).",
   "",
   "- uno",
   "- dos",
@@ -33,38 +35,122 @@ afterEach(() => {
   core.invoke.mockResolvedValue("/Users/yo/guia.docx");
 });
 
-describe("officeHtml", () => {
-  it("produce un documento mínimo con idioma, título y el cuerpo renderizado", () => {
-    const html = officeHtml(DOCUMENT, "Guía <rápida>");
+describe("markdownToOfficeDoc", () => {
+  it("convierte encabezados, formato en línea y listas al modelo estructural", () => {
+    const doc = markdownToOfficeDoc(DOCUMENT, "Guía rápida");
 
-    expect(html.startsWith("<!doctype html>")).toBe(true);
-    expect(html).toContain('<html lang="es">');
-    expect(html).toContain('<meta charset="utf-8">');
-    expect(html).toContain("<title>Guía &lt;rápida&gt;</title>");
-    expect(html).toContain("<h1>Título del documento</h1>");
-    expect(html).toContain("<li>uno</li>");
-    expect(html).toContain("<code>código</code>");
+    expect(doc.title).toBe("Guía rápida");
+    expect(doc.blocks).toHaveLength(3);
+    expect(doc.blocks[0]).toEqual({
+      kind: "heading",
+      level: 1,
+      runs: [{ kind: "text", text: "Título del documento" }],
+    });
+    expect(doc.blocks[1]).toEqual({
+      kind: "paragraph",
+      runs: [
+        { kind: "text", text: "Un párrafo con " },
+        { kind: "text", text: "código", code: true },
+        { kind: "text", text: ", " },
+        { kind: "text", text: "negrita", bold: true },
+        { kind: "text", text: ", " },
+        { kind: "text", text: "cursiva", italic: true },
+        { kind: "text", text: ", " },
+        { kind: "text", text: "tachado", strike: true },
+        { kind: "text", text: " y " },
+        { kind: "text", text: "enlace", href: "https://inkline.dev" },
+        { kind: "text", text: "." },
+      ],
+    });
+    expect(doc.blocks[2]).toEqual({
+      kind: "list",
+      ordered: false,
+      items: [
+        { blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "uno" }] }] },
+        { blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "dos" }] }] },
+      ],
+    });
   });
 
-  it("no arrastra la hoja de estilos ni scripts de la app", () => {
-    const html = officeHtml(DOCUMENT, "guia.md");
+  it("extrae listas de tareas, listas ordenadas con inicio, citas, código, tablas y separadores", () => {
+    const md = [
+      "- [x] Hecho",
+      "- [ ] Pendiente",
+      "",
+      "3. Tercero",
+      "",
+      "> Cita",
+      "",
+      "```mermaid",
+      "flowchart LR",
+      "  A --> B",
+      "```",
+      "",
+      "| Columna | Valor |",
+      "| :--- | ---: |",
+      "| A | 1 |",
+      "",
+      "---",
+    ].join("\n");
 
-    // textutil sólo entiende estructura: la estética Inkline no viaja al .docx.
-    expect(html).not.toContain("<style");
-    expect(html).not.toMatch(/<script\b/i);
-    expect(html).not.toMatch(/<link\b/i);
+    const doc = markdownToOfficeDoc(md, "completo.md");
+
+    expect(doc.blocks).toEqual([
+      {
+        kind: "list",
+        ordered: false,
+        items: [
+          { checked: true, blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "Hecho" }] }] },
+          {
+            checked: false,
+            blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "Pendiente" }] }],
+          },
+        ],
+      },
+      {
+        kind: "list",
+        ordered: true,
+        start: 3,
+        items: [{ blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "Tercero" }] }] }],
+      },
+      {
+        kind: "blockquote",
+        blocks: [{ kind: "paragraph", runs: [{ kind: "text", text: "Cita" }] }],
+      },
+      {
+        kind: "codeBlock",
+        language: "mermaid",
+        code: "flowchart LR\n  A --> B\n",
+      },
+      {
+        kind: "table",
+        headers: [
+          { align: "left", runs: [{ kind: "text", text: "Columna" }] },
+          { align: "right", runs: [{ kind: "text", text: "Valor" }] },
+        ],
+        rows: [
+          [
+            { align: "left", runs: [{ kind: "text", text: "A" }] },
+            { align: "right", runs: [{ kind: "text", text: "1" }] },
+          ],
+        ],
+      },
+      { kind: "thematicBreak" },
+    ]);
   });
 
-  it("exporta la fuente de un diagrama Mermaid en vez del aviso de espera", () => {
-    const html = officeHtml(
-      ["```mermaid", "flowchart LR", "  A --> B", "```"].join("\n"),
-      "diagrama.md",
-    );
+  it("conserva el HTML crudo como texto literal y degrada imágenes a su texto alternativo", () => {
+    const doc = markdownToOfficeDoc("<script>alert(1)</script> ![Logo](logo.png)", "seguro.md");
 
-    expect(html).not.toContain("Generando diagrama");
-    expect(html).toContain("flowchart LR");
-    // Sin hidratación no hay SVG: la fuente es lo único exportable.
-    expect(html).toContain("<pre class=\"inkline-diagram__source\" data-inkline-diagram-source>");
+    expect(doc.blocks).toEqual([
+      {
+        kind: "paragraph",
+        runs: [
+          { kind: "text", text: "<script>alert(1)</script> " },
+          { kind: "text", text: "[Imagen: Logo]", italic: true },
+        ],
+      },
+    ]);
   });
 });
 
@@ -91,7 +177,7 @@ describe("OFFICE_FORMATS", () => {
 });
 
 describe("exportOfficeDocument", () => {
-  it("pide la ruta con filtro de Word y convierte el HTML del documento", async () => {
+  it("pide la ruta con filtro de Word y envía el modelo OfficeDoc al backend", async () => {
     dialog.save.mockResolvedValue("/Users/yo/guia.docx");
     core.invoke.mockResolvedValue("/Users/yo/guia.docx");
 
@@ -107,8 +193,13 @@ describe("exportOfficeDocument", () => {
     expect(command).toBe("convert_to_office");
     expect(args.format).toBe("docx");
     expect(args.target).toBe("/Users/yo/guia.docx");
-    expect(typeof args.html).toBe("string");
-    expect(args.html as string).toContain("<h1>Título del documento</h1>");
+    const doc = args.doc as OfficeDoc;
+    expect(doc.title).toBe("guia.md");
+    expect(doc.blocks[0]).toEqual({
+      kind: "heading",
+      level: 1,
+      runs: [{ kind: "text", text: "Título del documento" }],
+    });
   });
 
   it("pide la ruta con filtro de OpenDocument y formato odt", async () => {

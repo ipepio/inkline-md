@@ -26,9 +26,8 @@ window built with Tauri 2.
   wrap, adjustable font size and tab width.
 - **Viewer** — GitHub-flavored Markdown with syntax highlighting (Shiki),
   diagrams (Mermaid) and task lists.
-- **Export** — standalone HTML, Markdown copy, and Office formats
-  (`.docx`, `.odt` via macOS `textutil`); printing goes through the system
-  browser.
+- **Export** — standalone HTML, Markdown copy, and native cross-platform Office
+  formats (`.docx`, `.odt`); printing goes through the system browser.
 - **Native menu bar & shortcuts** — native File/Edit/View menus routed to the
   same shell actions as keyboard shortcuts (`⌘D`, `⌘W`, `⌘O`, `⌘S`, `⌘K`,
   `⌘+/-`/`⌘0`), with platform-aware shortcut labels.
@@ -83,8 +82,7 @@ macOS bundle is built locally on an arm64 machine. Grab everything from
 | macOS | `.dmg` (Apple silicon) | local build |
 
 > The binaries are **unsigned**. macOS Gatekeeper and Windows SmartScreen will
-> show a first-run warning; use your OS "open anyway" flow. Office export
-> (`.docx` / `.odt`) uses macOS `textutil` and is unavailable on other systems.
+> show a first-run warning; use your OS "open anyway" flow.
 
 ## Project structure
 

@@ -14,8 +14,9 @@
  *   el mensaje de estado se lo dice a la persona usuaria en sus términos.
  *
  * Y, desde T7 (S4), un segundo grupo con dos formatos de oficina: Word (.docx)
- * y OpenDocument (.odt). Inkline no escribe esos archivos: el HTML estructural
- * viaja al comando `convert_to_office` de Rust, que ejecuta `textutil`.
+ * y OpenDocument (.odt). El modelo estructural viaja al comando
+ * `convert_to_office` de Rust, que genera los paquetes nativos sin binarios
+ * externos (funciona en Windows, Linux y macOS).
  *
  * El atajo ⌘E lo registra el shell: este componente sólo expone
  * `exportHtml()` en su handle imperativo. Ninguna operación lanza al llamador:
