@@ -1,0 +1,16 @@
+Inkline — Markdown Studio
+Copyright 2026 ipepio
+
+This product includes software developed as part of the Inkline project.
+
+Third-party notices
+-------------------
+design/inkline/inkline-markdown-studio.html is the frozen design reference
+(not shipped in the app) and embeds two MIT-licensed libraries:
+
+  Marked — Copyright (c) 2011-2022, Christopher Jeffrey (MIT)
+  PrismJS — Copyright (c) Lea Verou and contributors (MIT)
+
+.agents/skills/modern-web-guidance — Copyright Google LLC (Apache-2.0).
+
+Full license text: LICENSE (Apache License, Version 2.0).

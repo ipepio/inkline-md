@@ -96,4 +96,10 @@ odd/tasks/  Feature specs and task logs (ODD workflow)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+You may use, modify and redistribute this code, including commercially, as long
+as you keep the copyright and NOTICE files, state significant changes, and respect
+the patent grant (and its retaliation clause). The Inkline name and logo are not
+licensed: a fork that changes the branding is welcome, one that ships the same
+name is not.
