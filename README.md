@@ -77,12 +77,19 @@ macOS bundle is built locally on an arm64 machine. Grab everything from
 
 | OS | Artifact | Where |
 | --- | --- | --- |
-| Linux | `.AppImage` | `ubuntu-latest` runner |
+| Linux | `.deb` and `.AppImage` | `ubuntu-latest` runner |
 | Windows | NSIS `-setup.exe` | `windows-latest` runner |
 | macOS | `.dmg` (Apple silicon) | local build |
 
-> The binaries are **unsigned**. macOS Gatekeeper and Windows SmartScreen will
-> show a first-run warning; use your OS "open anyway" flow.
+The macOS image comes from `./scripts/package-macos-dmg.sh`, which builds the
+app, **ad-hoc signs the bundle** and only then creates the `.dmg`. Tauri's own
+dmg bundler leaves the seal incomplete (`code has no resources but signature
+indicates they must be present`), and macOS then reports the app as damaged.
+
+> The binaries are **not notarized or Developer ID signed**. macOS Gatekeeper and
+> Windows SmartScreen will still show a first-run warning; use your OS "open
+> anyway" flow. A real Developer ID plus notarization is what removes that
+> warning, not the ad-hoc signature.
 
 ## Project structure
 
