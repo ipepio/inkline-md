@@ -97,7 +97,7 @@ export interface ShortcutRow {
 /** Tabla de atajos; el modificador se resuelve según la plataforma. */
 export const SHORTCUTS: readonly ShortcutRow[] = [
   { action: "Buscar archivos y contenido", keys: ["K"] },
-  { action: "Buscar en documento", keys: ["F"] },
+  { action: "Cerrar documento", keys: ["W"] },
   { action: "Mostrar / ocultar explorador", keys: ["\\"] },
   { action: "Preferencias", keys: [","] },
   { action: "Abrir archivo", keys: ["O"] },
