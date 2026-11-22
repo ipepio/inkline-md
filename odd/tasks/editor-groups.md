@@ -34,7 +34,7 @@ grupos con edición sincronizada.
 
 | ID | Specs | Ruta | Commit |
 |----|-------|------|--------|
-| T1 | (habilita S1–S7) | worker: extraer orquestación de `App.tsx` a hooks (`src/hooks/`) sin cambio de comportamiento; costuras estables para el merge del demo | — |
+| T1 | (habilita S1–S7) | worker: extraer orquestación de `App.tsx` a hooks (`src/hooks/`) sin cambio de comportamiento; costuras estables para el merge del demo | 6b3737c |
 | T2 | S1–S4, S7 | worker: modelo de grupos (reducer puro: split/closeGroup/open/closeDoc/activate/focus/setMode) + tests exhaustivos | — |
 | T3 | S1, S3–S5 | worker: shell de grupos (render máx 2, divisor redimensionable entre grupos, × visible sólo con 2, CTA vacía, marca de foco) | — |
 | T4 | S6 | worker: `TabsBar` dividida en secciones por grupo con divisor | — |
@@ -46,3 +46,4 @@ grupos con edición sincronizada.
 - **L1**: "se me ha ocurrido otra nueva feature. Y si en una pestaña (que ahora mismo tenemos editor y preview) damos la opción de dividirla y poder trabajar con un máximo 2 documentos diferentes? de forma que puedas tener 2 editores y 2 previews? me explico? es decir, tu seleccionas un editor, y puedes seleccionar otro archivo md y se te abre en ese editor. OJO! esto solo sería mediante atajo (cmd d por ejemplo) y por defecto tienes 2 editores sin preview, pero que puedas sacar el preview de cada editor. me explico?"
 - **L2**: Respuestas de diseño: al dividir → grupo vacío con CTA · cierre → ⌘W cierra el doc del grupo enfocado y con 2 grupos aparece una cruz por grupo (sus pestañas pasan al superviviente) · pestañas → una barra dividida en secciones por grupo «tipo chrome» · persistencia → NO (sesión efímera) y el mismo md puede estar en ambos grupos, con edición sincronizada.
 - **L3**: Coordinación inter-sesiones: la rama hermana `feat/web-demo-mode` (landing, `5abcb92`) añade guardas `isDemoMode()` en App.tsx; mi rama nace de `main` (`8af6088`) en un worktree aparte (`/Users/ipepio/Workspace/ipepio/md_viewer-groups`) y preserva costuras estables para su merge.
+- **L4**: T1 completado (6b3737c): App.tsx 694→460 líneas, 11 módulos bajo `src/hooks/` (7 hooks de orquestación + 3 piezas puras + `useTheme` intacto), 59 tests nuevos. Costuras para `feat/web-demo-mode` preservadas y nombradas (bootstrap con orden interno idéntico, `handleOpenDialog`, `handleSave`, export/print). Gates del juez: **297/297 + build ✓**; sin cambio observable de comportamiento.
