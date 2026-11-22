@@ -12,8 +12,7 @@ pub struct TextDoc {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<TextDoc, String> {
-    let contents =
-        fs::read_to_string(&path).map_err(|e| format!("no se pudo leer {path}: {e}"))?;
+    let contents = fs::read_to_string(&path).map_err(|e| format!("no se pudo leer {path}: {e}"))?;
     Ok(TextDoc { path, contents })
 }
 
@@ -62,10 +61,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!(
-            "inkline-t1-{tag}-{}-{nanos}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("inkline-t1-{tag}-{}-{nanos}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         dir
     }

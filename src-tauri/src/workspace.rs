@@ -76,7 +76,8 @@ fn read_entries(dir: &Path, depth: usize) -> Result<Vec<TreeNode>, String> {
     if depth > MAX_DEPTH {
         return Ok(Vec::new());
     }
-    let entries = fs::read_dir(dir).map_err(|e| format!("no se pudo leer {}: {e}", dir.display()))?;
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("no se pudo leer {}: {e}", dir.display()))?;
     let mut nodes = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
@@ -158,8 +159,7 @@ pub fn parse_config(raw: &str) -> WorkspaceConfig {
 
 pub fn save_config(path: &Path, config: &WorkspaceConfig) -> Result<(), String> {
     if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)
-            .map_err(|e| format!("no se pudo crear {}: {e}", dir.display()))?;
+        fs::create_dir_all(dir).map_err(|e| format!("no se pudo crear {}: {e}", dir.display()))?;
     }
     let raw = serde_json::to_string_pretty(config)
         .map_err(|e| format!("no se pudo serializar la configuración: {e}"))?;
@@ -185,13 +185,7 @@ pub fn with_recent(config: &WorkspaceConfig, path: &str, opened_at: u64) -> Work
     };
     let mut recents = Vec::with_capacity(MAX_RECENTS);
     recents.push(recent);
-    recents.extend(
-        config
-            .recents
-            .iter()
-            .filter(|r| r.path != path)
-            .cloned(),
-    );
+    recents.extend(config.recents.iter().filter(|r| r.path != path).cloned());
     recents.truncate(MAX_RECENTS);
     WorkspaceConfig {
         root: config.root.clone(),
@@ -274,10 +268,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!(
-            "inkline-t4-{tag}-{}-{nanos}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("inkline-t4-{tag}-{}-{nanos}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         dir
     }
@@ -340,7 +332,10 @@ mod tests {
             level = folder.children.clone();
         }
         // d8 está en el nivel 8 ya en el tope: no se desciende a d9 ni a f9.md.
-        assert!(level.is_empty(), "el nivel 9 no debería listarse: {level:?}");
+        assert!(
+            level.is_empty(),
+            "el nivel 9 no debería listarse: {level:?}"
+        );
 
         fs::remove_dir_all(&dir).unwrap();
     }

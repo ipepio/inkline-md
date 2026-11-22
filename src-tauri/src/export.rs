@@ -76,7 +76,9 @@ fn has_parent(path: &Path) -> bool {
 }
 
 fn is_non_empty(path: &Path) -> bool {
-    fs::metadata(path).map(|meta| meta.len() > 0).unwrap_or(false)
+    fs::metadata(path)
+        .map(|meta| meta.len() > 0)
+        .unwrap_or(false)
 }
 
 /// Última línea del stderr de textutil: es donde repite el mensaje útil.
@@ -120,7 +122,9 @@ mod tests {
     static TEMP_SCAN: Mutex<()> = Mutex::new(());
 
     fn temp_scan_guard() -> std::sync::MutexGuard<'static, ()> {
-        TEMP_SCAN.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        TEMP_SCAN
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     const SAMPLE_HTML: &str = "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">\
@@ -131,10 +135,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!(
-            "inkline-t7-{tag}-{}-{nanos}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("inkline-t7-{tag}-{}-{nanos}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         dir
     }
@@ -185,9 +187,12 @@ mod tests {
             let target = dir.join(format!("documento.{format}"));
             let target_str = target.to_str().unwrap().to_string();
 
-            let returned =
-                convert_to_office(SAMPLE_HTML.to_string(), format.to_string(), target_str.clone())
-                    .unwrap_or_else(|e| panic!("{format}: {e}"));
+            let returned = convert_to_office(
+                SAMPLE_HTML.to_string(),
+                format.to_string(),
+                target_str.clone(),
+            )
+            .unwrap_or_else(|e| panic!("{format}: {e}"));
 
             assert_eq!(returned, target_str);
             let bytes = fs::read(&target).unwrap();
@@ -205,7 +210,8 @@ mod tests {
     }
 
     #[test]
-    fn convert_to_office_rejects_unknown_format() {        let dir = scratch_dir("formato");
+    fn convert_to_office_rejects_unknown_format() {
+        let dir = scratch_dir("formato");
         let target = dir.join("documento.pdf");
 
         let err = convert_to_office(
@@ -220,7 +226,10 @@ mod tests {
             err.contains("docx") && err.contains("odt"),
             "error sin formatos válidos: {err}"
         );
-        assert!(!target.exists(), "un formato inválido no debe escribir nada");
+        assert!(
+            !target.exists(),
+            "un formato inválido no debe escribir nada"
+        );
 
         fs::remove_dir_all(&dir).unwrap();
     }
@@ -229,9 +238,12 @@ mod tests {
     fn convert_to_office_rejects_target_without_parent_dir() {
         let target = "documento-sin-directorio.docx";
 
-        let err =
-            convert_to_office(SAMPLE_HTML.to_string(), "docx".to_string(), target.to_string())
-                .unwrap_err();
+        let err = convert_to_office(
+            SAMPLE_HTML.to_string(),
+            "docx".to_string(),
+            target.to_string(),
+        )
+        .unwrap_err();
 
         assert!(err.contains("directorio padre"), "error inesperado: {err}");
         assert!(!Path::new(target).exists());
