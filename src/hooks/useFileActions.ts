@@ -24,6 +24,7 @@ import {
 import type { DefaultView } from "@/lib/settings";
 import { pushRecent, type RecentFile } from "@/lib/workspace";
 import { isUntitled, untitledPath } from "./untitled";
+import { DEMO_NOTICE, isDemoMode } from "@/lib/demo/mode";
 
 /** Contador de documentos sin título; el contador vive con el shell. */
 let untitledCounter = 0;
@@ -79,10 +80,18 @@ export function useFileActions({
   );
 
   const handleOpenDialog = useCallback(async (): Promise<void> => {
-    const doc = await openTextFile();
-    if (!doc) return;
-    await registerOpen(doc.path, doc.contents);
-    setStatus(`Abierto: ${doc.path}`);
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
+      return;
+    }
+    try {
+      const doc = await openTextFile();
+      if (!doc) return;
+      await registerOpen(doc.path, doc.contents);
+      setStatus(`Abierto: ${doc.path}`);
+    } catch (err) {
+      setStatus(`Error al abrir: ${String(err)}`);
+    }
   }, [registerOpen, setStatus]);
 
   const handleNewDoc = useCallback((): void => {
@@ -93,6 +102,10 @@ export function useFileActions({
 
   const handleSave = useCallback(async (): Promise<void> => {
     if (!active) return;
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
+      return;
+    }
     try {
       if (isUntitled(active.path)) {
         const savedPath = await saveTextFileAs(active.contents);

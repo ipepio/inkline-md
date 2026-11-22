@@ -9,7 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:demo": "tsc -b && VITE_DEMO=1 vite build --base=./"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

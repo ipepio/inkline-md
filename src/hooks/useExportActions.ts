@@ -18,6 +18,7 @@ import { htmlExportFileName } from "@/lib/export/names";
 import { openInBrowser, writeTemporaryExport } from "@/lib/export/operations";
 import type { PageSize } from "@/lib/settings";
 import { displayName } from "./untitled";
+import { DEMO_NOTICE, isDemoMode } from "@/lib/demo/mode";
 
 export interface ExportActionsOptions {
   /** Documento activo: es el que se exporta o imprime. */
@@ -43,6 +44,10 @@ export function useExportActions({
   const handlePrintFromSettings = useCallback(async (): Promise<void> => {
     if (!active) {
       setStatus("No hay ningún documento que exportar");
+      return;
+    }
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
       return;
     }
     try {
