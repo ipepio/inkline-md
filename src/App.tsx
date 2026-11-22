@@ -35,6 +35,12 @@ import { StatusBar } from "@/components/shell/StatusBar";
 import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { ConfirmCloseDialog } from "@/components/shell/ConfirmCloseDialog";
 import { isWorkspaceMode, type WorkspaceMode } from "@/lib/editor/mode";
+import {
+  DEMO_DOC_PATH,
+  DEMO_NOTICE,
+  isDemoMode,
+  loadDemoDocument,
+} from "@/lib/demo/mode";
 import { useTheme } from "@/hooks/useTheme";
 import {
   closeDoc,
@@ -123,9 +129,21 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmClose, setConfirmClose] = useState<{ id: string; name: string } | null>(null);
 
-  // Carga inicial: raíz recordada + recientes persistidos.
+  // Carga inicial: raíz recordada + recientes persistidos. En modo demo no hay
+  // backend al que preguntar, así que se abre el documento de ejemplo.
   useEffect(() => {
     void (async () => {
+      if (isDemoMode()) {
+        try {
+          const contents = await loadDemoDocument();
+          const id = openDoc(DEMO_DOC_PATH, contents);
+          setViewState(id, { mode: getSettingsSnapshot().defaultView });
+          setStatus(DEMO_NOTICE);
+        } catch (err) {
+          setStatus(`No se pudo cargar la demo: ${String(err)}`);
+        }
+        return;
+      }
       try {
         const config = await loadWorkspaceConfig();
         setRecents(config.recents);
@@ -166,10 +184,18 @@ export default function App() {
   );
 
   const handleOpenDialog = useCallback(async (): Promise<void> => {
-    const doc = await openTextFile();
-    if (!doc) return;
-    await registerOpen(doc.path, doc.contents);
-    setStatus(`Abierto: ${doc.path}`);
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
+      return;
+    }
+    try {
+      const doc = await openTextFile();
+      if (!doc) return;
+      await registerOpen(doc.path, doc.contents);
+      setStatus(`Abierto: ${doc.path}`);
+    } catch (err) {
+      setStatus(`Error al abrir: ${String(err)}`);
+    }
   }, [registerOpen]);
 
   const handleNewDoc = useCallback((): void => {
@@ -179,20 +205,32 @@ export default function App() {
   }, [settings.defaultView]);
 
   const handleChooseRoot = useCallback(async (): Promise<void> => {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const picked = await open({ directory: true, multiple: false });
-    if (typeof picked !== "string") return;
-    setRoot(picked);
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
+      return;
+    }
     try {
-      await setWorkspace(picked);
-      setTree(await listTree(picked));
-    } catch {
-      setTree([]);
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const picked = await open({ directory: true, multiple: false });
+      if (typeof picked !== "string") return;
+      setRoot(picked);
+      try {
+        await setWorkspace(picked);
+        setTree(await listTree(picked));
+      } catch {
+        setTree([]);
+      }
+    } catch (err) {
+      setStatus(`Error al abrir la carpeta: ${String(err)}`);
     }
   }, []);
 
   const handleSave = useCallback(async (): Promise<void> => {
     if (!active) return;
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
+      return;
+    }
     try {
       if (isUntitled(active.path)) {
         const savedPath = await saveTextFileAs(active.contents);
@@ -226,6 +264,10 @@ export default function App() {
   const handlePrintFromSettings = useCallback(async (): Promise<void> => {
     if (!active) {
       setStatus("No hay ningún documento que exportar");
+      return;
+    }
+    if (isDemoMode()) {
+      setStatus(DEMO_NOTICE);
       return;
     }
     try {
