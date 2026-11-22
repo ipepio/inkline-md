@@ -15,6 +15,8 @@ describe("shellShortcut", () => {
     expect(shellShortcut(meta("e"))).toBe("export");
     // ⌘D divide el área en dos grupos (S1).
     expect(shellShortcut(meta("d"))).toBe("split");
+    // ⌘W cierra el documento del grupo con foco (S5).
+    expect(shellShortcut(meta("w"))).toBe("close");
     // La tecla no distingue mayúsculas: con Shift el atajo sigue siendo el mismo.
     expect(shellShortcut(meta("S"))).toBe("save");
   });

@@ -154,7 +154,7 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Atajos" }));
 
     expect(screen.getByText(/Los atajos usan ⌘ en macOS y Ctrl en Windows y Linux\./)).toBeInTheDocument();
-    expect(screen.getAllByRole("row")).toHaveLength(11);
+    expect(screen.getAllByRole("row")).toHaveLength(12);
     expect(screen.getByText("Buscar archivos y contenido")).toBeInTheDocument();
     expect(screen.getByText("⌘K")).toBeInTheDocument();
     expect(screen.getByText("Mostrar / ocultar explorador")).toBeInTheDocument();
@@ -164,6 +164,9 @@ describe("SettingsDialog", () => {
     expect(screen.getByText("Aumentar / reducir zoom")).toBeInTheDocument();
     expect(screen.getByText("⌘+ / ⌘−")).toBeInTheDocument();
     expect(screen.getByText("Nuevo documento")).toBeInTheDocument();
+    // ⌘D divide el área de trabajo en dos grupos de edición (S1).
+    expect(screen.getByText("Dividir editor")).toBeInTheDocument();
+    expect(screen.getByText("⌘D")).toBeInTheDocument();
   });
 
   it("el botón de cerrar pide cerrar el diálogo", () => {

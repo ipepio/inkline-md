@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { getDocumentsSnapshot, resetDocuments, setViewState } from "@/lib/documents";
-import { openTextFile } from "@/lib/files";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { getDocumentsSnapshot, resetDocuments, setContents, setViewState } from "@/lib/documents";
+import { openTextFile, readTextFile } from "@/lib/files";
 import { getSettingsSnapshot, resetSettings } from "@/lib/settings";
+import { loadWorkspaceConfig, pushRecent } from "@/lib/workspace";
 import App from "./App";
 
 vi.mock("@/lib/workspace", () => ({
@@ -23,6 +24,29 @@ vi.mock("@/lib/files", () => ({
   saveTextFile: vi.fn().mockResolvedValue(undefined),
   saveTextFileAs: vi.fn().mockResolvedValue(null),
 }));
+
+// jsdom no trae ResizeObserver ni scrollIntoView y los diálogos de `ui/` los
+// usan para medir su contenido. Stubs mínimos, sólo en este test.
+beforeAll(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+  Element.prototype.scrollIntoView = vi.fn();
+  Element.prototype.hasPointerCapture = vi.fn();
+  Element.prototype.releasePointerCapture = vi.fn();
+});
+
+/** Pestañas abiertas en TODAS las secciones de la barra (una por grupo). */
+function tabs(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('[data-slot="tab"]')).map(
+    (tab) => tab.querySelector("button")?.title ?? "",
+  );
+}
 
 describe("App (shell Inkline)", () => {
   it("muestra marca, explorador, acciones y estado vacío", () => {
@@ -251,6 +275,256 @@ describe("App (shell Inkline)", () => {
     // Cada grupo muestra su propio documento.
     expect(group1.textContent).toContain("uno");
     expect(group2.textContent).toContain("dos");
+
+    resetDocuments();
+  });
+
+  // T5 (S5 · S6): ⌘W cierra el documento del grupo CON FOCO. El documento es uno
+  // solo (S7), así que sale del almacén y la poda de T4 lo quita de TODAS las
+  // secciones de pestañas, no sólo de la enfocada.
+  it("cierra con ⌘W el documento del grupo con foco y lo poda de todas las secciones", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+    // El explorador recuerda el mismo documento: es el camino con el que el
+    // grupo enfocado recibe una ruta (recientes → almacén → grupo con foco).
+    const recent = { path: "/notas/uno.md", name: "uno.md", openedAt: 1 };
+    vi.mocked(loadWorkspaceConfig).mockResolvedValueOnce({
+      root: null,
+      recents: [recent],
+    });
+    // Abrir el documento refresca los recientes con lo que devuelve el backend;
+    // aquí los mantiene para poder abrirlo otra vez desde el explorador.
+    vi.mocked(pushRecent).mockResolvedValueOnce([recent]);
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    // El primer documento se abre en el grupo 1.
+    expect(tabs(container)).toEqual(["uno.md"]);
+
+    // ⌘D: el grupo 2 nace vacío y con el foco (S3 · S4).
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+
+    // El MISMO documento entra en el grupo 2 desde los recientes del explorador
+    // (S2 · S7): una pestaña en cada sección.
+    await waitFor(() => expect(screen.getByTitle("/notas/uno.md")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTitle("/notas/uno.md"));
+    });
+    expect(tabs(container)).toEqual(["uno.md", "uno.md"]);
+    expect(screen.getByLabelText("Grupo de edición 2")).toHaveAttribute("data-focused", "true");
+
+    // ⌘W cierra el documento del grupo enfocado; al ser único en el almacén, la
+    // poda lo retira de las dos secciones y los grupos colapsan.
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "w" }));
+    });
+    expect(getDocumentsSnapshot().docs).toHaveLength(0);
+    expect(tabs(container)).toEqual([]);
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(1);
+    expect(screen.getByText("Ningún documento abierto")).toBeInTheDocument();
+
+    // Repetir ⌘W sin documento no rompe nada ni abre diálogos.
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "w" }));
+    });
+    expect(getDocumentsSnapshot().docs).toHaveLength(0);
+    expect(screen.queryByText(/¿Cerrar «/)).not.toBeInTheDocument();
+
+    resetDocuments();
+  });
+
+  // T5 (S5): con el grupo enfocado vacío, ⌘W no toca el documento del otro grupo
+  // ni abre la confirmación.
+  it("con el grupo con foco vacío ⌘W no cierra el documento del otro grupo", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "w" }));
+    });
+
+    // El documento sigue abierto en el grupo 1 y seguimos con dos grupos.
+    expect(getDocumentsSnapshot().docs).toHaveLength(1);
+    expect(container.querySelectorAll("[data-editor-group]")).toHaveLength(2);
+    expect(tabs(container)).toEqual(["uno.md"]);
+    expect(screen.queryByText(/¿Cerrar «/)).not.toBeInTheDocument();
+
+    resetDocuments();
+  });
+
+  // T5 (S5): ⌘W pasa por el flujo de cierre de siempre, que pregunta antes de
+  // perder cambios sin guardar.
+  it("⌘W pide confirmación si el documento del grupo con foco está sucio", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+
+    render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      setContents(getDocumentsSnapshot().activeId as string, "# uno editado");
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "w" }));
+    });
+    expect(screen.getByText("¿Cerrar «uno.md» sin guardar?")).toBeInTheDocument();
+    // Cancelar deja el documento abierto: la confirmación decide de verdad.
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(getDocumentsSnapshot().docs).toHaveLength(1);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "w" }));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar sin guardar" }));
+    expect(getDocumentsSnapshot().docs).toHaveLength(0);
+
+    resetDocuments();
+  });
+
+  // T5 (S2): la barra de formato (⌘B / ⌘I) va al editor del grupo CON FOCO por
+  // el mapa de handles de `EditorGroups`, no al último editor montado.
+  it("aplica el formato en el editor del grupo con foco y no en el otro", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile)
+      .mockResolvedValueOnce({ path: "/notas/uno.md", contents: "# uno" })
+      .mockResolvedValueOnce({ path: "/notas/dos.md", contents: "# dos" });
+
+    render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    // El grupo 2 (con foco) recibe el segundo documento.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+
+    const [{ id: unoId, contents: unoBefore }, { id: dosId }] = getDocumentsSnapshot().docs;
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "b" }));
+    });
+
+    const docs = getDocumentsSnapshot().docs;
+    // La negrita aterriza en el documento del grupo con foco…
+    expect(docs.find((doc) => doc.id === dosId)?.contents).toContain("**texto**");
+    // …y el documento del otro grupo se queda como estaba.
+    expect(docs.find((doc) => doc.id === unoId)?.contents).toBe(unoBefore);
+
+    resetDocuments();
+  });
+
+  // T5 (S2 · S4): sin documento en el grupo con foco, ⌘B no hace nada (ni cae al
+  // editor del otro grupo).
+  it("con el grupo con foco vacío el formato no toca ningún documento", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+
+    render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "b" }));
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "i" }));
+    });
+
+    expect(getDocumentsSnapshot().docs[0]?.contents).toBe("# uno");
+
+    resetDocuments();
+  });
+
+  // T5 (PRESERVE): una ruta que aún NO está abierta se sigue leyendo del disco y
+  // aparece en el grupo de siempre; el enrutado nuevo sólo cambia el caso de un
+  // documento ya abierto.
+  it("los recientes siguen abriendo un archivo que no estaba abierto", async () => {
+    resetDocuments();
+    vi.mocked(loadWorkspaceConfig).mockResolvedValueOnce({
+      root: null,
+      recents: [{ path: "/notas/nueva.md", name: "nueva.md", openedAt: 1 }],
+    });
+    vi.mocked(readTextFile).mockResolvedValueOnce({
+      path: "/notas/nueva.md",
+      contents: "# nueva",
+    });
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByTitle("/notas/nueva.md")).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTitle("/notas/nueva.md"));
+    });
+
+    expect(getDocumentsSnapshot().docs.map((doc) => doc.path)).toEqual(["/notas/nueva.md"]);
+    expect(screen.getByText("Abierto: /notas/nueva.md")).toBeInTheDocument();
+    expect(tabs(document.body)).toEqual(["nueva.md"]);
+
+    resetDocuments();
+  });
+
+  // T5 (S2 · S7): la paleta sigue eligiendo en el almacén y el puente abre en el
+  // grupo con foco. El caso que lo prueba de verdad es elegir el documento que
+  // YA está activo: el almacén no cambia y aun así debe llegar al grupo enfocado.
+  it("la paleta abre el documento elegido en el grupo con foco", async () => {
+    resetDocuments();
+    vi.mocked(openTextFile).mockResolvedValueOnce({
+      path: "/notas/uno.md",
+      contents: "# uno",
+    });
+
+    const { container } = render(<App />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "d" }));
+    });
+    // El grupo 2 (con foco) nace vacío (S4).
+    expect(screen.getByText("Este editor está libre")).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { metaKey: true, key: "k" }));
+    });
+    fireEvent.click(screen.getByRole("option", { name: /uno\.md/i }));
+
+    // El mismo documento vive en los dos grupos (S7): una pestaña por sección y
+    // el grupo 2, que estaba vacío, ya lo muestra.
+    expect(tabs(container)).toEqual(["uno.md", "uno.md"]);
+    expect(screen.queryByText("Este editor está libre")).not.toBeInTheDocument();
+    // El grupo 2 ya pinta el documento, no su llamada a la acción.
+    expect(
+      screen.getByLabelText("Grupo de edición 2").querySelector('[data-pane="editor"]'),
+    ).not.toBeNull();
 
     resetDocuments();
   });

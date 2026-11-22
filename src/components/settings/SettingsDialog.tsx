@@ -105,6 +105,8 @@ export const SHORTCUTS: readonly ShortcutRow[] = [
   { action: "Exportar HTML", keys: ["E"] },
   { action: "Negrita / cursiva", keys: ["B", "I"] },
   { action: "Nuevo documento", keys: ["N"] },
+  // ⌘D divide el área de trabajo en dos grupos de edición (S1).
+  { action: "Dividir editor", keys: ["D"] },
   { action: "Aumentar / reducir zoom", keys: ["+", "−"] },
   { action: "Restablecer zoom", keys: ["0"] },
 ];

@@ -20,6 +20,8 @@ export interface ShellShortcutsOptions {
   handleNewDoc: () => void;
   /** ⌘D: dividir el área en dos grupos (S1). */
   handleSplit: () => void;
+  /** ⌘W: cerrar el documento del grupo con foco (S5). */
+  handleClose: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
@@ -34,6 +36,7 @@ export function useShellShortcuts({
   handleOpenDialog,
   handleNewDoc,
   handleSplit,
+  handleClose,
   zoomIn,
   zoomOut,
   resetZoom,
@@ -57,6 +60,9 @@ export function useShellShortcuts({
           break;
         case "split":
           handleSplit();
+          break;
+        case "close":
+          handleClose();
           break;
         case "bold":
           editorRef.current?.applyFormat("bold");
@@ -93,6 +99,7 @@ export function useShellShortcuts({
     handleOpenDialog,
     handleNewDoc,
     handleSplit,
+    handleClose,
     zoomIn,
     zoomOut,
     resetZoom,

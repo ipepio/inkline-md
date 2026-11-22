@@ -19,6 +19,11 @@
  * ⌘O/⌘N/explorador/recientes/paleta. El cierre, en cambio, sí es del almacén
  * (un documento es uno solo, S7) y el modelo se poda con los ids vivos.
  *
+ * Enrutado al grupo con foco (T5 · S2 · S5): ⌘W cierra su documento, ⌘S lo
+ * guarda, ⌘E lo exporta, ⌘B/⌘I escriben en su editor (mapa de handles de
+ * `EditorGroups`) y explorador/recientes/paleta lo abren. Zoom y tema siguen
+ * siendo globales: no cuelgan de ningún grupo.
+ *
  * Las costuras del arranque (`useWorkspaceBootstrap`), `handleOpenDialog`,
  * `handleSave` y `handlePrintFromSettings` son estables: la rama hermana
  * `feat/web-demo-mode` engancha ahí sus guardas de modo demo.
@@ -132,6 +137,36 @@ export default function App() {
     setStatus,
   });
 
+  // Abrir en el grupo con foco (S2). El puente de `useEditorGroups` abre lo que
+  // el almacén selecciona, pero sólo reacciona a un documento NUEVO: si la
+  // persona elige justo el que ya estaba activo (el mismo `.md` en los dos
+  // grupos, S7) el almacén no cambia y el grupo enfocado no recibía nada. Aquí
+  // se selecciona y se despacha el `OPEN_DOC` explícito —idempotente— del grupo
+  // con foco, así que los dos caminos coinciden en vez de depender del orden.
+  const openDocInFocusedGroup = useCallback(
+    (docId: string): void => {
+      selectDoc(docId);
+      dispatchGroups({ type: "OPEN_DOC", docId });
+    },
+    [dispatchGroups],
+  );
+
+  // Explorador, recientes y paleta trabajan con rutas: si el documento ya está
+  // abierto se abre el del almacén (sin releerlo del disco, que descartaría lo
+  // que no se ha guardado); si no, se lee y el almacén lo deja en el grupo con
+  // foco por la vía de siempre.
+  const openFileInFocusedGroup = useCallback(
+    (path: string): void => {
+      const open = docs.find((doc) => doc.path === path);
+      if (open) {
+        openDocInFocusedGroup(open.id);
+        return;
+      }
+      void handleOpenFile(path);
+    },
+    [docs, handleOpenFile, openDocInFocusedGroup],
+  );
+
   const { exportRef, handlePrintFromSettings } = useExportActions({
     active: focusedDoc,
     theme,
@@ -144,6 +179,14 @@ export default function App() {
     confirmEnabled: settings.confirmClose,
   });
 
+  // ⌘W (S5): cierra el documento del grupo con foco por el flujo de siempre
+  // (`useCloseConfirm`: pregunta si está sucio y `closeDoc` del almacén); la poda
+  // de arriba lo retira de todas las secciones. Sin documento es un no-op: no se
+  // cae al documento del otro grupo ni se abre ninguna confirmación.
+  const closeFocusedDoc = useCallback((): void => {
+    if (focusedDoc) handleCloseDoc(focusedDoc.id);
+  }, [focusedDoc, handleCloseDoc]);
+
   const { zoomIn, zoomOut, resetZoom } = useZoomControls();
 
   useShellShortcuts({
@@ -153,6 +196,7 @@ export default function App() {
     handleOpenDialog,
     handleNewDoc,
     handleSplit: groups.split,
+    handleClose: closeFocusedDoc,
     zoomIn,
     zoomOut,
     resetZoom,
@@ -307,7 +351,7 @@ export default function App() {
               <FileTree
                 tree={tree}
                 activePath={focusedDoc && !isUntitled(focusedDoc.path) ? focusedDoc.path : undefined}
-                onOpenFile={(path) => void handleOpenFile(path)}
+                onOpenFile={openFileInFocusedGroup}
               />
             ) : (
               <p className="px-3 py-2 text-[11px] text-muted-foreground">
@@ -316,7 +360,7 @@ export default function App() {
             )}
             <RecentsList
               recents={recents}
-              onOpenFile={(path) => void handleOpenFile(path)}
+              onOpenFile={openFileInFocusedGroup}
             />
           </div>
         </aside>
@@ -465,8 +509,8 @@ export default function App() {
       <CommandPalette
         docs={paletteDocs}
         files={paletteFiles}
-        onSelectDoc={selectDoc}
-        onOpenFile={(path) => void handleOpenFile(path)}
+        onSelectDoc={openDocInFocusedGroup}
+        onOpenFile={openFileInFocusedGroup}
         onOpenDialog={() => void handleOpenDialog()}
         onNewDoc={handleNewDoc}
         onToggleTheme={toggleTheme}

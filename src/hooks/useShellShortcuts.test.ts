@@ -14,6 +14,7 @@ function setup() {
     handleOpenDialog: vi.fn().mockResolvedValue(undefined),
     handleNewDoc: vi.fn(),
     handleSplit: vi.fn(),
+    handleClose: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
     resetZoom: vi.fn(),
@@ -58,6 +59,17 @@ describe("useShellShortcuts", () => {
 
     expect(split.defaultPrevented).toBe(true);
     expect(options.handleSplit).toHaveBeenCalledTimes(1);
+  });
+
+  // S5: ⌘W cierra el documento del grupo CON FOCO; el hook sólo despacha, el
+  // documento lo elige el shell (que conoce el grupo enfocado).
+  it("cierra el documento del grupo con foco con ⌘W", () => {
+    const { options } = setup();
+
+    const close = press({ metaKey: true, key: "w" });
+
+    expect(close.defaultPrevented).toBe(true);
+    expect(options.handleClose).toHaveBeenCalledTimes(1);
   });
 
   it("aplica formato en el editor y exporta desde el menú", () => {
