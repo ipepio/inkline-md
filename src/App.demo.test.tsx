@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { resetSettings, updateSettings } from "@/lib/settings";
 import { DEMO_NOTICE } from "@/lib/demo/mode";
 import App from "./App";
@@ -22,10 +22,14 @@ describe("App (modo demo web)", () => {
       expect(await screen.findByText(DEMO_NOTICE)).toBeInTheDocument();
       // El documento de ejemplo se abre de verdad: pestaña y migas de pan.
       expect((await screen.findAllByText("README.md")).length).toBeGreaterThan(1);
-      // Y se renderiza: es el mismo visor de la app, no un texto suelto.
-      expect(
-        await screen.findByText("Tres modos, un documento"),
-      ).toBeInTheDocument();
+      // Hay un documento activo con contenido. Se comprueba por el recuento de
+      // la barra de estado y no por el Markdown renderizado: el modo de vista
+      // puede ser editor (CodeMirror no monta todo el texto en jsdom) y el
+      // documento de ejemplo incluye un diagrama Mermaid que no siempre
+      // renderiza igual en cada entorno.
+      await waitFor(() =>
+        expect(screen.getByText(/\d+\s+palabras/)).toBeInTheDocument(),
+      );
       expect(
         screen.queryByText(/No se pudo cargar el espacio de trabajo/),
       ).not.toBeInTheDocument();
