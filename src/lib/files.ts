@@ -1,5 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
+/** Evento emitido por Rust cuando el SO pide abrir archivos en Inkline. */
+export const OPEN_FILES_EVENT = "inkline://open-files";
+
 export interface TextDoc {
   path: string;
   contents: string;
@@ -15,6 +18,14 @@ export async function readTextFile(path: string): Promise<TextDoc> {
 
 export async function saveTextFile(path: string, contents: string): Promise<void> {
   return invoke("write_file", { path, contents });
+}
+
+/**
+ * Recoge los archivos que el sistema operativo pidió abrir antes de que el
+ * webview terminase de arrancar y habilita la recepción en vivo por evento.
+ */
+export async function takePendingOpenFiles(): Promise<string[]> {
+  return invoke<string[]>("take_pending_open_files");
 }
 
 export async function openTextFile(): Promise<TextDoc | null> {

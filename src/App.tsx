@@ -88,12 +88,19 @@ import { useCloseConfirm } from "@/hooks/useCloseConfirm";
 import { useZoomControls } from "@/hooks/useZoomControls";
 import { useShellShortcuts, type ShellShortcutsOptions } from "@/hooks/useShellShortcuts";
 import { useNativeMenu } from "@/hooks/useNativeMenu";
+import { useExternalFileOpen } from "@/hooks/useExternalFileOpen";
 import { useDocumentView } from "@/hooks/useDocumentView";
 import { useEditorGroups } from "@/hooks/useEditorGroups";
 import { usePaletteItems } from "@/hooks/usePaletteItems";
 import { displayName, isUntitled } from "@/hooks/untitled";
 import { DEMO_NOTICE, isDemoMode } from "@/lib/demo/mode";
-import { useDocuments, selectDoc, setContents, setViewState } from "@/lib/documents";
+import {
+  getDocumentsSnapshot,
+  useDocuments,
+  selectDoc,
+  setContents,
+  setViewState,
+} from "@/lib/documents";
 import { revealInFileManager } from "@/lib/files";
 import { useSettings, updateSettings, zoomedEditorFontSize } from "@/lib/settings";
 import { comboLabel, fileManagerLabel } from "@/lib/platform";
@@ -182,21 +189,23 @@ export default function App() {
     [dispatchGroups],
   );
 
-  // Explorador, recientes y paleta trabajan con rutas: si el documento ya está
-  // abierto se abre el del almacén (sin releerlo del disco, que descartaría lo
-  // que no se ha guardado); si no, se lee y el almacén lo deja en el grupo con
-  // foco por la vía de siempre.
+  // Explorador, recientes, paleta y apertura desde el SO trabajan con rutas:
+  // si el documento ya está abierto se activa el del almacén (sin releerlo del
+  // disco, que descartaría lo que no se ha guardado); si no, se lee y el
+  // almacén lo deja en el grupo con foco por la vía de siempre.
   const openFileInFocusedGroup = useCallback(
-    (path: string): void => {
-      const open = docs.find((doc) => doc.path === path);
+    async (path: string): Promise<void> => {
+      const open = getDocumentsSnapshot().docs.find((doc) => doc.path === path);
       if (open) {
         openDocInFocusedGroup(open.id);
         return;
       }
-      void handleOpenFile(path);
+      await handleOpenFile(path);
     },
-    [docs, handleOpenFile, openDocInFocusedGroup],
+    [handleOpenFile, openDocInFocusedGroup],
   );
+
+  useExternalFileOpen(openFileInFocusedGroup);
 
   const { exportRef, handlePrintFromSettings } = useExportActions({
     active: focusedDoc,

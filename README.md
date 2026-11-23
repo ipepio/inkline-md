@@ -20,7 +20,8 @@ window built with Tauri 2.
   groups, with edits appearing live in the other. The split is session-only:
   nothing is persisted.
 - **File workspace** — side drawer with folder tree, recents and open-document
-  tabs; fuzzy command palette (`⌘K`).
+  tabs; fuzzy command palette (`⌘K`); opens `.md`/`.markdown` files directly
+  from the OS («Open With», Finder, Dock, or CLI arguments).
 - **Editor** — CodeMirror 6 with line numbers, Markdown highlighting,
   formatting toolbar, per-document cursor/scroll restoration, optional word
   wrap, adjustable font size and tab width.

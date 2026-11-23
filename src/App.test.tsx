@@ -21,11 +21,13 @@ vi.mock("@/lib/workspace", () => ({
 }));
 
 vi.mock("@/lib/files", () => ({
+  OPEN_FILES_EVENT: "inkline://open-files",
   openTextFile: vi.fn().mockResolvedValue(null),
   readTextFile: vi.fn().mockResolvedValue({ path: "", contents: "" }),
   saveTextFile: vi.fn().mockResolvedValue(undefined),
   saveTextFileAs: vi.fn().mockResolvedValue(null),
   revealInFileManager: vi.fn().mockResolvedValue(undefined),
+  takePendingOpenFiles: vi.fn().mockResolvedValue([]),
 }));
 
 // jsdom no maqueta el layout del que CodeMirror depende, así que el editor se
