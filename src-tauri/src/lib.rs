@@ -8,7 +8,29 @@ mod workspace;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    // Instancia única en escritorio: en Windows y Linux, abrir otro `.md`
+    // desde el explorador o la terminal reenvía la ruta a la ventana ya
+    // abierta y la trae al frente en lugar de lanzar una segunda ventana.
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            let base = if cwd.is_empty() {
+                None
+            } else {
+                Some(std::path::Path::new(&cwd))
+            };
+            let paths = open_files::paths_from_args_in(args.into_iter().skip(1), base);
+            if paths.is_empty() {
+                open_files::focus_main_window(app);
+            } else {
+                open_files::dispatch_open_files(app, paths);
+            }
+        }));
+    }
+
+    builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(open_files::PendingOpenFiles::default())

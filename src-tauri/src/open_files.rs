@@ -68,6 +68,16 @@ where
     I: IntoIterator<Item = S>,
     S: Into<OsString>,
 {
+    paths_from_args_in(args, None)
+}
+
+/// Como [`paths_from_args`], resolviendo rutas relativas contra `base_dir`
+/// (útil cuando una segunda instancia reenvía argumentos con su propio `cwd`).
+pub fn paths_from_args_in<I, S>(args: I, base_dir: Option<&Path>) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<OsString>,
+{
     let mut out = Vec::new();
     for raw in args {
         let os: OsString = raw.into();
@@ -76,7 +86,11 @@ where
                 continue;
             }
         }
-        let path = PathBuf::from(&os);
+        let candidate = PathBuf::from(&os);
+        let path = match base_dir {
+            Some(dir) if candidate.is_relative() => dir.join(&candidate),
+            _ => candidate,
+        };
         if let Some(resolved) = existing_file_path(&path) {
             if !out.contains(&resolved) {
                 out.push(resolved);
@@ -103,6 +117,16 @@ pub fn paths_from_urls(urls: &[tauri::Url]) -> Vec<String> {
     out
 }
 
+/// Muestra y enfoca la ventana principal (p. ej. al recibir archivos o al
+/// intentar abrir una segunda instancia).
+pub fn focus_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 /// Encola o emite las rutas recibidas del sistema operativo. Cuando la app ya
 /// está en marcha también muestra y enfoca la ventana principal.
 pub fn dispatch_open_files<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
@@ -111,11 +135,7 @@ pub fn dispatch_open_files<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
     };
     if let Some(ready_paths) = state.enqueue_or_dispatch(paths) {
         let _ = app.emit(OPEN_FILES_EVENT, ready_paths);
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.unminimize();
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
+        focus_main_window(app);
     }
 }
 
@@ -225,6 +245,19 @@ mod tests {
         let http_url = tauri::Url::parse("https://example.com/doc.md").unwrap();
 
         let found = paths_from_urls(&[http_url, dir_url, file_url.clone(), file_url]);
+        assert_eq!(found.len(), 1);
+        assert_eq!(PathBuf::from(&found[0]), md.canonicalize().unwrap());
+
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn paths_from_args_in_resolves_relative_paths_against_cwd() {
+        let dir = scratch_dir("cwd");
+        let md = dir.join("relativo.md");
+        fs::write(&md, "# relativo").unwrap();
+
+        let found = paths_from_args_in(["relativo.md", "-v", "no-existe.md"], Some(&dir));
         assert_eq!(found.len(), 1);
         assert_eq!(PathBuf::from(&found[0]), md.canonicalize().unwrap());
 
